@@ -1,0 +1,11 @@
+# Tier 2: RTX 5090 desktop (Blackwell, 32 GB). Requires `pip install brian2cuda`
+# and a CUDA toolkit >= 12.8 (sm_120). Not yet validated.
+name: rtx5090
+backend:
+  device: cuda_standalone
+stimulus:
+  size: 32
+network:
+  n_exc: 1600
+training:
+  n_presentations: 5000

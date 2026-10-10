@@ -1,0 +1,5 @@
+# Tier 1: Dell laptop (Core Ultra 9 288V, 8 cores, WSL2) - CPU only.
+name: laptop
+backend:
+  device: cpp_standalone
+  threads: 1             # 1 thread beat 8 by 16x on this small net (OpenMP sync overhead)

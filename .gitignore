@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Secrets (vast.ai API key etc.)
+.env
+*.env
+
+# Simulation outputs and generated standalone builds
+data/runs/
+output/
+*.npz
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Local reference documents (not for the repo)
+digitalbrain.pdf

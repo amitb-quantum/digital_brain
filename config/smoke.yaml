@@ -1,0 +1,18 @@
+# Tiny network for tests and quick sanity checks (seconds, pure numpy).
+name: smoke
+backend:
+  device: runtime
+  codegen: numpy
+stimulus:
+  size: 12
+  offset_range_px: 1.0
+  present_ms: 100
+  rest_ms: 50
+training:
+  n_presentations: 10
+test:
+  n_orientations: 4
+  offsets_px: [0.0]
+  repeats: 2
+network:
+  n_exc: 8

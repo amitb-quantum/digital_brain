@@ -1,0 +1,10 @@
+# Tier 3: rented vast.ai H100/H200. Same model, larger scale. Not yet validated.
+name: vast_h200
+backend:
+  device: cuda_standalone
+stimulus:
+  size: 64
+network:
+  n_exc: 6400
+training:
+  n_presentations: 20000

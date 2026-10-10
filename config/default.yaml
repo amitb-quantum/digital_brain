@@ -1,0 +1,68 @@
+# Base configuration. Tier files (laptop.yaml, rtx5090.yaml, vast_h200.yaml)
+# override only what differs; values are deep-merged on top of this file.
+name: default
+seed: 42
+output_dir: data/runs
+
+backend:
+  device: runtime        # runtime | cpp_standalone | cuda_standalone
+  codegen: numpy         # runtime only: numpy | cython
+  threads: 1             # cpp_standalone OpenMP threads
+  dt_ms: 0.5
+
+stimulus:
+  size: 16               # retina is size x size pixels (one Poisson input each)
+  bar_width_px: 1.0      # Gaussian sigma of the bar profile
+  offset_range_px: 3.0   # training bars are shifted uniformly within +/- this
+  max_rate_hz: 192.0     # bar-centre rate; 64 Hz left neurons near-silent (sweep 2026-10-10)
+  present_ms: 250
+  rest_ms: 100           # silent gap so conductances/traces decay between stimuli
+
+training:
+  n_presentations: 1500
+
+test:
+  n_orientations: 8
+  offsets_px: [-2.0, 0.0, 2.0]
+  repeats: 2             # repeat 0 labels neurons, repeats >= 1 are decoded
+  min_spikes: 10         # neurons with fewer test spikes are excluded from OSI stats
+
+# Excitatory/inhibitory LIF populations with an adaptive threshold
+# (Diehl & Cook 2015, Front. Comput. Neurosci. 9:99).
+network:
+  n_exc: 100
+  exc:
+    v_rest_mV: -65.0
+    v_reset_mV: -65.0
+    v_thresh_mV: -52.0
+    tau_m_ms: 100.0
+    refractory_ms: 5.0
+    E_exc_mV: 0.0
+    E_inh_mV: -100.0
+    tau_ge_ms: 1.0
+    tau_gi_ms: 2.0
+    theta_plus_mV: 0.05
+    tau_theta_ms: 1.0e+7
+  inh:
+    v_rest_mV: -60.0
+    v_reset_mV: -45.0
+    v_thresh_mV: -40.0
+    tau_m_ms: 10.0
+    refractory_ms: 2.0
+    E_exc_mV: 0.0
+    E_inh_mV: -85.0
+    tau_ge_ms: 1.0
+    tau_gi_ms: 2.0
+  w_exc_inh: 10.4        # one-to-one exc -> inh
+  w_inh_exc: 17.0        # inh -> every other exc (winner-take-all)
+
+# Triplet STDP on input -> exc synapses plus per-neuron weight normalisation.
+plasticity:
+  w_init_max: 0.3
+  wmax: 1.0
+  nu_pre: 0.0001
+  nu_post: 0.01
+  tau_pre_ms: 20.0
+  tau_post1_ms: 20.0
+  tau_post2_ms: 40.0
+  norm_mean_w: 0.1       # incoming weights rescaled to this mean at each stimulus onset
