@@ -2,7 +2,9 @@
 
 Proof of concept that a single GPU can **emulate** part of the brain: biologically
 modelled spiking neurons, conductance-based membranes and spike-timing-dependent
-plasticity (STDP), not a conventional deep-learning network.
+plasticity (STDP), not a conventional deep-learning network. For the motivation
+(Geoffrey Hinton on digital vs. biological intelligence) and the reasoning behind
+the design, see [docs/background.md](docs/background.md).
 
 ## First circuit: V1 orientation learning
 
