@@ -73,7 +73,7 @@ python -m src.main --config config/rtx5090.yaml --device cpp_standalone   # medi
 | Model size (config) | Synapses | Laptop CPU | RTX 5090 | H100/H200 |
 |---|---|---|---|---|
 | Small: 16×16 retina, 100 exc (`laptop.yaml`) | 36k | to re-measure (RTF about 30 under `euler`) | RTF 1.24 | **RTF 4.83** (H100 PCIe) |
-| Medium: 32×32 retina, 1600 exc (`rtx5090.yaml`) | 4.2M | not run | RTF 1.16 | not run |
+| Medium: 32×32 retina, 1600 exc (`rtx5090.yaml`, 20k presentations) | 4.2M | not run | RTF 1.15 | **RTF 4.13** (H100 SXM) |
 | Large: 64×64 retina, 6400 exc (`vast_h200.yaml`) | 67M | not run (too slow; estimate from a short run) | RTF 0.47 (short run) | not run |
 
 - **Re-run the laptop column under `exponential_euler`.** The laptop's last numbers used `euler`.
@@ -139,6 +139,14 @@ About 50 of the 100 excitatory neurons learn clean oriented-bar receptive fields
 - **Launcher bugs this rental exposed:**
   1. `vastai attach ssh` prints a Python repr, which crashed the first attempt. Cleanup destroyed that instance within 4 s.
   2. `cd X && cmd &` held ssh open until the job ended, which would have killed long runs at the 600 s ssh timeout. Both are fixed.
+
+### Medium model on an H100 SXM (2026-10-11, machine 150369, $2.08/h)
+
+- **Run:** `rtx5090.yaml` with 20k presentations: 7112 s of biological time in 1724 s, plus 16 s compile.
+  - RTF 4.13, against 1.15 on the 5090 under WSL2: 3.6× faster.
+  - 7.3×10⁷ synaptic events per second.
+- **Bit-identical to the 5090 run:** exactly 776,326 excitatory spikes, 594 learned RFs, OSI 0.659 → 0.997 and accuracy 0.892 → 0.933. brian2cuda with a fixed seed is deterministic across Blackwell and Hopper, so the GPU tiers differ only in speed.
+- **Rental:** about 36 min (SSH 111 s, setup 4 min 41 s, run 29 min), about $1.14 of credit.
 
 ### Recruitment at the medium size (32×32 retina, 1600 exc)
 
