@@ -72,7 +72,7 @@ python -m src.main --config config/rtx5090.yaml --device cpp_standalone   # medi
 
 | Model size (config) | Synapses | Laptop CPU | RTX 5090 | H100/H200 |
 |---|---|---|---|---|
-| Small: 16×16 retina, 100 exc (`laptop.yaml`) | 36k | to re-measure (RTF about 30 under `euler`) | RTF 1.24 | not run |
+| Small: 16×16 retina, 100 exc (`laptop.yaml`) | 36k | to re-measure (RTF about 30 under `euler`) | RTF 1.24 | **RTF 4.83** (H100 PCIe) |
 | Medium: 32×32 retina, 1600 exc (`rtx5090.yaml`) | 4.2M | not run | RTF 1.16 | not run |
 | Large: 64×64 retina, 6400 exc (`vast_h200.yaml`) | 67M | not run (too slow; estimate from a short run) | RTF 0.47 (short run) | not run |
 
@@ -118,6 +118,18 @@ About 50 of the 100 excitatory neurons learn clean oriented-bar receptive fields
 - **Input rate:** `max_rate_hz` 64 left neurons near-silent. 192 works at 16×16. At larger retinas, bars are longer and drive is higher: 9% of neurons respond in the pre-test at 32×32 and 71% at 64×64.
 - **Threshold adaptation:** `theta_plus_mV` above 0.05 (tried 0.2 and 0.5) silences the network at test time. Keep 0.05.
 - **Low responsive fraction:** partly by design (winner-take-all, sparse tuning), partly because many neurons are never recruited. At 1600 neurons only 3% respond after training. This is the main open problem.
+
+### First vast.ai run (2026-10-11, H100 PCIe 80 GB, machine 149333, $2.40/h)
+
+- **Run:** `rtx5090_validate.yaml` (the small model) on `cuda_standalone` under native Linux, driver 595.71.
+  - RTF 4.83: 558.6 s of biological time in 115.6 s, plus 15.6 s compile.
+  - About 103 µs per step, against about 400 on the 5090 under WSL2, so 3.9× faster at this size.
+  - This supports the WSL2 sync-latency explanation for the 5090's per-step floor.
+- **Learning** matched the CPU run under `exponential_euler`: accuracy 0.33 → 0.71 and OSI 0.68 → 0.93.
+- **Timeline and cost:** about 6 minutes from create to destroy (SSH 81 s, setup about 85 s, run 132 s), and about $0.19 of credit.
+- **Launcher bugs this rental exposed:**
+  1. `vastai attach ssh` prints a Python repr, which crashed the first attempt. Cleanup destroyed that instance within 4 s.
+  2. `cd X && cmd &` held ssh open until the job ended, which would have killed long runs at the 600 s ssh timeout. Both are fixed.
 
 ### Recruitment at the medium size (32×32 retina, 1600 exc)
 

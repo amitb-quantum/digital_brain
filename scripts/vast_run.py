@@ -179,10 +179,11 @@ def ssh_base(state):
             "-o", "ConnectTimeout=20", "-o", "ServerAliveInterval=30"]
 
 
-def ssh(state, command, timeout=600, check=True):
-    cmd = ["ssh", *ssh_base(state), "-p", str(state["ssh_port"]),
+def ssh(state, command, timeout=600, check=True, stdin_null=False):
+    cmd = ["ssh", *(["-n"] if stdin_null else []), *ssh_base(state), "-p", str(state["ssh_port"]),
            f"root@{state['ssh_host']}", command]
-    out = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    out = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
+                         stdin=subprocess.DEVNULL)
     if check and out.returncode:
         raise RuntimeError(f"remote command failed ({out.returncode}): {command}\n{out.stderr[-1500:]}")
     return out
@@ -338,10 +339,23 @@ def run_campaign(campaign, state, args):
         raise RuntimeError("remote setup failed; see setup.log in the campaign directory")
 
     device = f" --device {shlex.quote(args.device)}" if args.device else ""
-    job = (f"cd {REMOTE}/project && nohup bash -c '{REMOTE}/miniforge/bin/conda run -n digital-brain "
-           f"--no-capture-output python -m src.main --config {shlex.quote(args.config)}{device} "
-           f"> {REMOTE}/run.log 2>&1; echo $? > {REMOTE}/run.exit' > /dev/null 2>&1 &")
-    ssh(state, job)
+    # Fully detached (own session, no stdin/stdout tie to ssh). In the first
+    # trial the launch ssh did not return until the job finished; with a
+    # 600 s timeout that would have killed the controller on any long run.
+    # Braces matter: `cd X && cmd &` backgrounds the whole list in a subshell that
+    # keeps ssh's pipes open until the job ends.
+    job = (f"cd {REMOTE}/project && {{ setsid nohup bash -c '{REMOTE}/miniforge/bin/conda run "
+           f"-n digital-brain --no-capture-output python -m src.main --config "
+           f"{shlex.quote(args.config)}{device} > {REMOTE}/run.log 2>&1; "
+           f"echo $? > {REMOTE}/run.exit' < /dev/null > /dev/null 2>&1 & }}")
+    try:
+        ssh(state, job, timeout=60, stdin_null=True)
+    except subprocess.TimeoutExpired:
+        log(campaign, "launch ssh did not return in 60 s; the detached job keeps running")
+    alive = ssh(state, f"pgrep -f '[s]rc.main --config' > /dev/null || test -f {REMOTE}/run.exit",
+                check=False).returncode == 0
+    if not alive:
+        raise RuntimeError("job is neither running nor finished after launch")
     state["status"] = "running"
     state["job_started"] = now_iso()
     save_state(campaign, state)
