@@ -31,7 +31,7 @@ completion) and a cerebellar microcircuit (motor control).
 
 ## Environment
 
-- **Conda env `digital-brain`, Python 3.12:** `pip install -r requirements.txt`.
+- **Conda env `digital-brain`, Python 3.12.** Build it with `conda env create -f environment.yml`, which includes the CUDA toolkit. On a CPU-only machine, `pip install -r requirements.txt` on Python 3.12 is enough.
 - **Brian2 is pinned to 2.10.1 because brian2cuda pins it exactly.** brian2cuda 1.0b1 needs Brian2 2.10.1, which needs Python 3.12 or newer; 1.0a7 needs 2.8.0. Upgrade Brian2 and brian2cuda together. Brian2 2.10 fixed the `ndarray.ptp` problem, so NumPy is no longer held below 2.4.
 - **Copy Brian2 arrays out of a run with `np.array`, never `np.asarray`.** Since Brian2 2.10, monitor arrays such as `mon.i[:]` are views into memory that is freed with the network. A view kept past `run_simulation` returns garbage.
 - **CUDA toolkit for the GPU tiers comes from conda-forge into the env** (no sudo needed):
@@ -130,10 +130,29 @@ About 50 of the 100 excitatory neurons learn clean oriented-bar receptive fields
    - Benchmark native Linux against WSL2 if a dual boot is possible.
 3. **Only then rent an H200.** The 5090 runs the `vast_h200` size already, so renting is justified only for networks too large for 32 GB, or once the WSL2 overhead is gone and compute dominates.
 
+## vast.ai tier: `scripts/vast_run.py`
+
+```bash
+python scripts/vast_run.py quote --max-cost 3        # read-only: credit, instances, offers, lifetime caps
+python scripts/vast_run.py launch --offer-id ID --config config/rtx5090.yaml --max-cost 3   # dry run: prints plan
+python scripts/vast_run.py launch ... --yes          # rents; only after the owner approves the quote
+python scripts/vast_run.py cleanup --campaign data/vast/LABEL   # manual destroy + verify
+```
+
+- **Lifetime cap.** The lifetime is `floor((max_cost - 0.50) * 3600 / hourly)`, where hourly includes 40 GB of disk.
+- **Watchdog.** An independent watchdog is armed before the create call. At the deadline it destroys every instance carrying the campaign's unique label. Keep vermithor awake and WSL running until the campaign log shows the instance destroyed.
+- **Refusals.** The launcher will not start if the git tree is dirty (the payload is `git archive HEAD`), if any instance already exists on the account (it is shared), or if the credit does not cover the cap.
+- **Remote setup.** `scripts/vast_remote_setup.sh` installs pinned Miniforge 26.5.3-0 (checksum verified), creates the env from `environment.yml`, then runs `pip check` and `pytest`. It has been validated locally from scratch. The image is pinned by digest: `vastai/base-image:cuda-12.9-mini-py312-2026-09-07`.
+- **Campaign folders.** `data/vast/<label>/` holds the state, logs, the per-rental private SSH key and the collected results. Git ignores it.
+- **Design.** The design follows the SpectraNS-3D vast.ai handoff: search is not rental, destroy by label and ID then verify absence, check for the label before retrying a lost create, and collect small files first. Do not use that project's scripts, key or budget.
+
 ## Rules
 
 - **The repo `github.com/amitb-quantum/digital_brain` is PRIVATE.** Do not change its visibility; the owner will decide when to make it public.
 - **Never commit `digitalbrain.pdf`** (it's in `.gitignore`). It's the original source conversation. `docs/background.md` is its sanitised replacement. Keep that doc free of chat transcripts, chat links, usernames, hostnames and account details.
 - **Secrets** (for example `VAST_API_KEY`) go in `.env`, which git ignores, or in `vastai set api-key`. Never put them in code or config.
+- **vast.ai budget: USD 10 ceiling for this project** (set 2026-10-10; the owner may revise it).
+  - Every rental needs the owner's approval of a fresh quote.
+  - The account is shared with another project. Before renting, check the live balance and that no other instance is running. Never spend another project's allowance.
 - **vast.ai instances must be destroyed when a run finishes.** An idle H200 costs about $50 a day. Any launch script must tear the instance down.
 - **Report results honestly.** Treat the claims in `docs/background.md` §4 (speedups, capacity, "perfect memory") as hypotheses to measure, not facts.

@@ -1,0 +1,20 @@
+# Full environment for every tier, including the vast.ai hosts:
+#   conda env create -f environment.yml
+# The CPU-only laptop tier can skip the cuda-* packages and use just
+# `pip install -r requirements.txt` on Python 3.12.
+# CUDA 12.9, not 13: brian2cuda builds with -std=c++11, and CUDA 13's CCCL needs C++17.
+# cuda-nvcc pulls in conda's gcc 14, because CUDA 12.9 does not support gcc 15.
+name: digital-brain
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - cuda-version=12.9
+  - cuda-nvcc
+  - cuda-cudart-dev
+  - libcurand-dev
+  - cuda-profiler-api
+  - make
+  - pip
+  - pip:
+      - -r requirements.txt
