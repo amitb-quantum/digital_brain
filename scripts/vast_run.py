@@ -1,12 +1,14 @@
 """Run one digital_brain experiment on a rented vast.ai GPU under a hard cost cap.
 
     python scripts/vast_run.py quote  [--gpu H100_SXM] [--max-cost 3]
-    python scripts/vast_run.py launch --offer-id ID --config config/X.yaml --max-cost 3 --yes
+    python scripts/vast_run.py launch --machine-id M --max-hourly 2.5 --config config/X.yaml --max-cost 3 --yes
     python scripts/vast_run.py cleanup --campaign data/vast/LABEL
 
 Safety model:
 - `quote` is read-only. Only `launch` rents, and only with --yes, which the
-  owner gives after approving a specific quote.
+  owner gives after approving a specific quote: a machine and a max hourly rate.
+  vast.ai re-issues offer ids for the same machine between searches, so the
+  launcher picks that machine's current offer, never above --max-hourly.
 - The rental lifetime is capped at floor((max_cost - reserve) * 3600 / hourly).
   An independent watchdog process is armed before the rental is created. At the
   deadline it destroys every instance carrying this campaign's unique label,
@@ -62,6 +64,12 @@ def eligible(offer):
             and (offer.get("cpu_cores_effective") or 0) >= MIN_CPU_CORES
             and (offer.get("cpu_ram") or 0) >= MIN_RAM_GB * 1024
             and (offer.get("disk_space") or 0) >= DISK_GB)
+
+
+def pick_offer(offers, machine_id, max_hourly):
+    """The approved machine's current offer, if it is within the approved rate."""
+    return next((o for o in offers
+                 if o.get("machine_id") == machine_id and hourly_cost(o) <= max_hourly), None)
 
 
 def owned(instances, label, instance_id=None):
@@ -190,7 +198,7 @@ def cmd_quote(args):
     print(f"{len(offers)} eligible {args.gpu} offers (disk {DISK_GB} GB included):")
     for o in offers[:args.top]:
         h = hourly_cost(o)
-        print(f"  offer {o['id']}: ${h:.3f}/h  -> lifetime cap {max_lifetime_s(args.max_cost, h) / 3600:.2f} h "
+        print(f"  machine {o['machine_id']} (offer {o['id']}): ${h:.3f}/h  -> lifetime cap {max_lifetime_s(args.max_cost, h) / 3600:.2f} h "
               f"at ${args.max_cost:.2f}  | {o['gpu_name']} {o['gpu_ram'] / 1024:.0f}GB  "
               f"cpus {o['cpu_cores_effective']:.0f}  ram {o['cpu_ram'] / 1024:.0f}GB  "
               f"cuda {o['cuda_max_good']}  rel {o['reliability2']:.3f}  {o.get('geolocation', '')}")
@@ -207,10 +215,11 @@ def check_preconditions(args):
     if others:
         sys.exit(f"refusing to launch: {len(others)} instance(s) already on the account "
                  "(shared account; one campaign at a time)")
-    offer = next((o for o in search_offers(args.gpu) if o["id"] == args.offer_id), None)
+    offer = pick_offer(search_offers(args.gpu), args.machine_id, args.max_hourly)
     if offer is None:
-        sys.exit(f"offer {args.offer_id} is no longer available or eligible; re-run quote")
-    hourly = hourly_cost(offer)
+        sys.exit(f"machine {args.machine_id} has no eligible offer at or below "
+                 f"${args.max_hourly:.3f}/h; re-run quote")
+    hourly = args.max_hourly  # cap the lifetime at the approved rate, not today's price
     credit = account_credit()
     if credit < args.max_cost + RESERVE_USD:
         sys.exit(f"credit ${credit:.2f} does not cover max cost ${args.max_cost:.2f} plus reserve")
@@ -225,8 +234,9 @@ def cmd_launch(args):
     label = f"digital-brain-{datetime.now(timezone.utc):%Y%m%d-%H%M%S}"
     campaign = CAMPAIGNS / label
     campaign.mkdir(parents=True)
-    plan = {"label": label, "offer_id": offer["id"], "gpu": offer["gpu_name"],
-            "hourly_usd": hourly, "max_cost_usd": args.max_cost, "lifetime_s": lifetime,
+    plan = {"label": label, "machine_id": args.machine_id, "offer_id": offer["id"],
+            "gpu": offer["gpu_name"], "offer_hourly_usd": hourly_cost(offer),
+            "max_hourly_usd": hourly, "max_cost_usd": args.max_cost, "lifetime_s": lifetime,
             "credit_before_usd": credit, "commit": commit, "config": args.config,
             "device": args.device, "image": IMAGE, "disk_gb": DISK_GB}
     (campaign / "quote.json").write_text(json.dumps(offer, indent=2))
@@ -272,15 +282,26 @@ def cmd_launch(args):
 
 
 def run_campaign(campaign, state, args):
-    try:
-        receipt = vast("create", "instance", state["offer_id"], "--image", IMAGE,
-                       "--disk", DISK_GB, "--label", state["label"], "--ssh", "--cancel-unavail")
-        state["instance_id"] = receipt["new_contract"]
-    except Exception as exc:  # noqa: BLE001  a lost response may still have created it
-        found = owned(list_instances(), state["label"])
-        if not found:
-            raise RuntimeError(f"create failed and no labelled instance exists: {exc}") from exc
-        state["instance_id"] = found[0]["id"]
+    for attempt in range(3):
+        try:
+            receipt = vast("create", "instance", state["offer_id"], "--image", IMAGE,
+                           "--disk", DISK_GB, "--label", state["label"], "--ssh",
+                           "--cancel-unavail")
+            state["instance_id"] = receipt["new_contract"]
+            break
+        except Exception as exc:  # noqa: BLE001  a lost response may still have created it
+            found = owned(list_instances(), state["label"])
+            if found:
+                state["instance_id"] = found[0]["id"]
+                break
+            log(campaign, f"create attempt {attempt + 1} failed: {exc}")
+            offer = pick_offer(search_offers(args.gpu), state["machine_id"],
+                               state["max_hourly_usd"])
+            if offer is None:
+                raise RuntimeError("approved machine no longer offered within the approved rate")
+            state.update(offer_id=offer["id"], offer_hourly_usd=hourly_cost(offer))
+    else:
+        raise RuntimeError("create failed three times; nothing was rented")
     state["status"] = "created"
     save_state(campaign, state)
     log(campaign, f"instance {state['instance_id']} created from offer {state['offer_id']}")
@@ -379,7 +400,9 @@ def main():
     q.add_argument("--max-cost", type=float, default=3.0)
     q.add_argument("--top", type=int, default=5)
     la = sub.add_parser("launch", help="rent, run one config, collect, destroy")
-    la.add_argument("--offer-id", type=int, required=True)
+    la.add_argument("--machine-id", type=int, required=True, help="from `quote`")
+    la.add_argument("--max-hourly", type=float, required=True,
+                    help="approved USD/h including disk; also sets the lifetime cap")
     la.add_argument("--gpu", default="H100_SXM")
     la.add_argument("--config", required=True)
     la.add_argument("--device", default=None)

@@ -151,7 +151,7 @@ A "learned" neuron has a best Pearson r above 0.5 against oriented-bar templates
 
 ```bash
 python scripts/vast_run.py quote --max-cost 3        # read-only: credit, instances, offers, lifetime caps
-python scripts/vast_run.py launch --offer-id ID --config config/rtx5090.yaml --max-cost 3   # dry run: prints plan
+python scripts/vast_run.py launch --machine-id M --max-hourly 2.5 --config config/rtx5090.yaml --max-cost 3   # dry run
 python scripts/vast_run.py launch ... --yes          # rents; only after the owner approves the quote
 python scripts/vast_run.py cleanup --campaign data/vast/LABEL   # manual destroy + verify
 ```

@@ -9,7 +9,7 @@ _spec = importlib.util.spec_from_file_location(
 vast_run = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(vast_run)
 
-OFFER = {"id": 1, "dph_total": 2.04, "storage_cost": 0.27, "cpu_arch": "amd64",
+OFFER = {"id": 1, "machine_id": 42, "dph_total": 2.04, "storage_cost": 0.27, "cpu_arch": "amd64",
          "cuda_max_good": 13.2, "cpu_cores_effective": 24, "cpu_ram": 92 * 1024,
          "disk_space": 849}
 
@@ -43,3 +43,11 @@ def test_ownership_requires_label_and_id():
     assert [i["id"] for i in vast_run.owned(instances, "digital-brain-a", 7)] == [7]
     assert [i["id"] for i in vast_run.owned(instances, "digital-brain-a")] == [7, 9]
     assert vast_run.owned(instances, "digital-brain-b") == []
+
+
+def test_pick_offer_matches_machine_within_rate():
+    reissued = OFFER | {"id": 2}  # vast.ai re-issues offer ids for the same machine
+    other = OFFER | {"id": 3, "machine_id": 43, "dph_total": 1.0}
+    assert vast_run.pick_offer([other, reissued], 42, 2.10)["id"] == 2
+    assert vast_run.pick_offer([other, reissued], 42, 2.00) is None  # over approved rate
+    assert vast_run.pick_offer([other], 42, 9.0) is None
