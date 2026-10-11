@@ -149,9 +149,17 @@ A "learned" neuron has a best Pearson r above 0.5 against oriented-bar templates
 | 1,500 | 75 (4.7%) | 20 |
 | 2,500 | 110 (6.9%) | 23 |
 | 5,000 | 209 (13.1%) | 24 |
+| 20,000 | 594 (37.1%) | 34 |
 | 1,500 at laptop size (100 exc), for comparison | 48 (48%) | 31 |
 
-- **Recruitment is linear, at about one neuron per 20–30 presentations.** The medium model is under-trained rather than broken: about 19k presentations (about 1.7 h on the 5090) should recruit half the neurons.
+- **Recruitment is near-linear but slows with training:** about 20 presentations per neuron early on, about 34 by 20k. The medium model was under-trained, not broken.
+- **The 20k run** (5090, RTF 1.15, 1.7 h, 120-trial test):
+  - learned RFs 0 → 594
+  - mean OSI 0.66 → 0.997
+  - decoding 0.89 → 0.93
+  - responsive fraction 0.24 → 0.10
+- **`rtx5090.yaml` now trains for 20,000 presentations.**
+- **At this size, decoding is a weak learning signal.** With 1600 neurons, random weights already decode orientation at 0.89. Report learned RFs and OSI as the main learning metrics.
 - **Post-test responsive fraction is a poor scale metric.** It uses 24 distinct test stimuli, and winner-take-all lets only a few neurons win each one.
 - **Decoding accuracy is just as unreliable here.** It uses 24 evaluation trials, and random weights already decode at 0.75 to 0.79 at this size. Fix the evaluation before tuning against it.
 
