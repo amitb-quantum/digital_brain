@@ -42,7 +42,6 @@ RESERVE_USD = 0.50          # transfer, rounding and posting lag
 COLLECT_MARGIN_S = 600      # stop waiting for the job this long before the deadline
 REMOTE = "/opt/db"
 MIN_CPU_CORES, MIN_RAM_GB, MIN_CUDA = 4, 16, 12.9
-VASTAI = shutil.which("vastai") or str(Path(sys.executable).with_name("vastai"))
 
 
 # ---------------------------------------------------------------- pure helpers
@@ -78,30 +77,36 @@ def owned(instances, label, instance_id=None):
             if i.get("label") == label and (instance_id is None or i.get("id") == instance_id)]
 
 
-# ---------------------------------------------------------------- vast.ai CLI
+# ---------------------------------------------------------------- vast.ai API
 
-def vast(*args):
-    out = subprocess.run([VASTAI, *map(str, args), "--raw"], capture_output=True, text=True,
-                         timeout=180)
-    if out.returncode:
-        raise RuntimeError(f"vastai {' '.join(map(str, args[:2]))} failed: {out.stderr.strip()[-400:]}")
-    return json.loads(out.stdout) if out.stdout.strip() else None
+_client = None
+
+
+def api():
+    """vast.ai SDK client. It reads the key from ~/.config/vastai/vast_api_key itself.
+    The SDK returns dicts; the CLI's printed output is not reliably JSON
+    (`attach ssh` prints a Python repr even with --raw)."""
+    global _client
+    if _client is None:
+        from vastai.sdk import VastAI
+        _client = VastAI()
+    return _client
 
 
 def search_offers(gpu):
     query = (f"gpu_name={gpu} num_gpus=1 verified=true rentable=true rented=false "
              f"reliability>0.99")
-    return sorted((o for o in vast("search", "offers", query, "-o", "dph_total") if eligible(o)),
+    return sorted((o for o in api().search_offers(query=query, order="dph_total") if eligible(o)),
                   key=hourly_cost)
 
 
 def account_credit():
     """Only the credit figure leaves this function; the raw response can hold secrets."""
-    return float(vast("show", "user")["credit"])
+    return float(api().show_user()["credit"])
 
 
 def list_instances():
-    return vast("show", "instances") or []
+    return api().show_instances() or []
 
 
 def destroy_owned(state):
@@ -110,8 +115,8 @@ def destroy_owned(state):
     targets = owned(list_instances(), label, iid) or owned(list_instances(), label)
     for inst in targets:
         try:
-            vast("destroy", "instance", inst["id"], "-y")
-        except RuntimeError:
+            api().destroy_instance(inst["id"])
+        except Exception:  # noqa: BLE001
             pass  # e.g. the watchdog got there first; absence is verified below
     for _ in range(20):
         remaining = owned(list_instances(), label)
@@ -284,9 +289,9 @@ def cmd_launch(args):
 def run_campaign(campaign, state, args):
     for attempt in range(3):
         try:
-            receipt = vast("create", "instance", state["offer_id"], "--image", IMAGE,
-                           "--disk", DISK_GB, "--label", state["label"], "--ssh",
-                           "--cancel-unavail")
+            receipt = api().create_instance(state["offer_id"], image=IMAGE, disk=DISK_GB,
+                                            label=state["label"], ssh=True,
+                                            cancel_unavail=True)
             state["instance_id"] = receipt["new_contract"]
             break
         except Exception as exc:  # noqa: BLE001  a lost response may still have created it
@@ -307,7 +312,9 @@ def run_campaign(campaign, state, args):
     log(campaign, f"instance {state['instance_id']} created from offer {state['offer_id']}")
 
     pub = (campaign / "id_ed25519.pub").read_text().strip()
-    vast("attach", "ssh", state["instance_id"], pub)
+    attached = api().attach_ssh(state["instance_id"], pub)
+    if isinstance(attached, dict) and attached.get("success") is False:
+        raise RuntimeError(f"attaching the ssh key failed: {attached.get('msg', attached)}")
     wait_for_ssh(campaign, state)
 
     gpu = ssh(state, "nvidia-smi --query-gpu=name,uuid,driver_version,memory.total,clocks.max.sm,"
@@ -357,7 +364,7 @@ def run_campaign(campaign, state, args):
 def wait_for_ssh(campaign, state):
     deadline = min(time.time() + 1200, state["deadline_epoch"] - COLLECT_MARGIN_S)
     while time.time() < deadline:
-        info = vast("show", "instance", state["instance_id"]) or {}
+        info = api().show_instance(state["instance_id"]) or {}
         if info.get("actual_status") == "running" and info.get("ssh_host"):
             state.update(ssh_host=info["ssh_host"], ssh_port=info["ssh_port"])
             if ssh(state, "true", timeout=60, check=False).returncode == 0:
