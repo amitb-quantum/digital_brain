@@ -31,6 +31,10 @@ test:
 # (Diehl & Cook 2015, Front. Comput. Neurosci. 9:99).
 network:
   n_exc: 100
+  # Membrane integrator. exponential_euler is exact for v given the conductances;
+  # euler at dt 0.5 ms goes unstable (runaway firing) once many inhibitory
+  # neurons spike in one step, e.g. 32x32 retina + 1600 exc (2026-10-10).
+  method: exponential_euler
   exc:
     v_rest_mV: -65.0
     v_reset_mV: -65.0

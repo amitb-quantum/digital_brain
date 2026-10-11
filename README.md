@@ -40,8 +40,9 @@ The same model code runs everywhere. Only the config file changes.
 |---|---|---|---|
 | `config/smoke.yaml` | any | `runtime` (numpy) | tests, seconds |
 | `config/laptop.yaml` | Dell, Core Ultra 9 288V, WSL2 | `cpp_standalone` | validated |
-| `config/rtx5090.yaml` | RTX 5090 desktop (32 GB) | `cuda_standalone` | needs `brian2cuda` and CUDA ≥ 12.8 |
-| `config/vast_h200.yaml` | vast.ai H100/H200 | `cuda_standalone` | not yet validated |
+| `config/rtx5090_validate.yaml` | RTX 5090 desktop, laptop-sized model | `cuda_standalone` | validated |
+| `config/rtx5090.yaml` | RTX 5090 desktop (32 GB) | `cuda_standalone` | runs at RTF 1.16, 2.4× the CPU; learning needs retuning |
+| `config/vast_h200.yaml` | vast.ai H100/H200 | `cuda_standalone` | not yet run on an H200; a short run at this size works on the 5090 |
 
 `config/default.yaml` holds every parameter. Tier files override only what differs.
 
@@ -60,6 +61,6 @@ Each run writes `data/runs/<config>-<timestamp>/` containing `metrics.json`,
 
 ## Notes
 
-- **NumPy is pinned below 2.4.** Brian2 2.9.0 still calls `ndarray.ptp`, which NumPy 2.4 removed.
+- **Python 3.12+, Brian2 2.10.1.** brian2cuda pins an exact Brian2 version, and Brian2 2.10 requires Python 3.12. See `CLAUDE.md` for the conda CUDA toolkit install that the GPU tiers need.
 - **Use one thread on the laptop.** On this 25k-synapse network, `cpp_standalone` with 1 OpenMP thread ran 16× faster than with 8, because thread synchronisation per timestep costs more than the work. Re-check this as the network grows.
 - **Keep secrets in `.env`**, which is git-ignored. Example: `VAST_API_KEY`.

@@ -1,0 +1,5 @@
+# Tier 2 bring-up check: the laptop-sized model on the GPU. Metrics should be
+# close to the laptop.yaml CPU reference (not identical: different RNG streams).
+name: rtx5090_validate
+backend:
+  device: cuda_standalone

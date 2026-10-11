@@ -1,5 +1,6 @@
-brian2==2.9.0
-numpy==2.3.5  # brian2 2.9.0 uses ndarray.ptp, removed in numpy 2.4
+brian2==2.10.1      # needs Python >= 3.12; pinned exactly by brian2cuda
+brian2cuda==1.0b1   # GPU tiers; also needs a CUDA toolkit >= 12.8 (see CLAUDE.md)
+numpy==2.5.4
 matplotlib==3.11.2
 PyYAML==6.0.3
 pytest==9.1.1
