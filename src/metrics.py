@@ -1,5 +1,7 @@
-"""Orientation selectivity, decoding accuracy, and throughput metrics."""
+"""Orientation selectivity, decoding accuracy, receptive-field and throughput metrics."""
 import numpy as np
+
+from .stimulus import bar_image
 
 
 def spike_counts(spike_i, spike_t_ms, n_neurons, block, period_ms, present_ms):
@@ -82,6 +84,29 @@ def evaluate_block(spike_i, spike_t_ms, n_exc, block, schedule, n_orientations,
         "osi": osi,
         "pref": pref,
     }
+
+
+def rf_bar_scores(w, size, width, offset_range_px, n_theta=36):
+    """Best Pearson r between each neuron's input weights (columns of w) and
+    an oriented-bar template over a grid of orientations and offsets.
+
+    Unlike the test-block metrics, this counts every neuron that learned a bar,
+    including ones that winner-take-all keeps silent on the few test stimuli."""
+    offsets = np.arange(-offset_range_px - 1, offset_range_px + 1.5, 0.5)
+    t = np.array([bar_image(size, th, off, width).ravel()
+                  for th in np.arange(n_theta) * np.pi / n_theta for off in offsets])
+    t = (t - t.mean(1, keepdims=True)) / t.std(1, keepdims=True)
+    z = (w - w.mean(0)) / (w.std(0) + 1e-12)
+    return (t @ z / w.shape[0]).max(0)
+
+
+def learned_rfs(w, cfg, threshold=0.5):
+    """Count and fraction of neurons whose weights match a bar (r > threshold).
+    Scores are bimodal in practice (learned neurons sit above 0.8)."""
+    s = cfg["stimulus"]
+    r = rf_bar_scores(w, s["size"], s["bar_width_px"], s["offset_range_px"])
+    return {"count": int((r > threshold).sum()), "fraction": float((r > threshold).mean()),
+            "median_r": float(np.median(r))}
 
 
 def throughput(results, n_exc):

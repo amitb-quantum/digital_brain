@@ -23,8 +23,8 @@ training:
 
 test:
   n_orientations: 8
-  offsets_px: [-2.0, 0.0, 2.0]
-  repeats: 2             # repeat 0 labels neurons, repeats >= 1 are decoded
+  offsets_px: [-2.0, -1.0, 0.0, 1.0, 2.0]
+  repeats: 4             # repeat 0 labels neurons, repeats >= 1 are decoded (8*5*3 = 120 trials)
   min_spikes: 10         # neurons with fewer test spikes are excluded from OSI stats
 
 # Excitatory/inhibitory LIF populations with an adaptive threshold

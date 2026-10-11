@@ -93,6 +93,15 @@ python -m src.main --config config/rtx5090.yaml --device cpp_standalone   # medi
 | Real-time factor, laptop CPU | about 30 | not measured |
 | Real-time factor, vermithor CPU | about 40 | about 32 |
 
+**Current small-model reference** (`laptop.yaml` with `exponential_euler`, run on vermithor's CPU, seeds 42, 1, 2, 3):
+- The test set is now 5 offsets × 4 repeats: 120 decoded trials, up from 24.
+- Decoding accuracy 0.49 → 0.80 (mean; per seed 0.76 to 0.83).
+- Mean OSI 0.67 → 0.96.
+- Learned RFs (bar-template r > 0.5, now in `metrics.json` as `learned_rfs`): 0 → 49 of 100 (range 47 to 51).
+- RTF about 30.
+
+On the larger test, random weights decode at about 0.49 rather than 0.375, so the old 24-trial numbers overstated the before/after gap.
+
 Under `exponential_euler`, decoding is about 0.1 lower and OSI is unchanged. The parameters were hand-tuned under `euler`, which at dt/τ_ge = 0.5 decays conductances faster than the exact solution. Retuning is an open task.
 
 About 50 of the 100 excitatory neurons learn clean oriented-bar receptive fields.

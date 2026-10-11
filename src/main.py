@@ -13,7 +13,7 @@ import yaml
 
 from . import plots
 from .config import load_config
-from .metrics import evaluate_block, throughput
+from .metrics import evaluate_block, learned_rfs, throughput
 from .network import initial_weights, run_simulation
 from .stimulus import build_schedule
 
@@ -50,6 +50,8 @@ def run_experiment(cfg, out_root=None, make_plots=True, keep_build=False):
         "n_synapses": int(w_init.size + n_exc + n_exc * (n_exc - 1)),
         "pre_test": evals["pre_test"]["summary"],
         "post_test": evals["post_test"]["summary"],
+        "learned_rfs": {"initial": learned_rfs(w_init, cfg),
+                        "final": learned_rfs(results["w_final"], cfg)},
         "performance": throughput(results, n_exc),
         "theta_mean_mV": float(results["theta_final_mV"].mean()),
     }
@@ -82,7 +84,7 @@ def main():
         cfg["backend"]["device"] = args.device
         cfg["name"] = f"{cfg['name']}-{args.device}"
     run_dir, metrics = run_experiment(cfg, args.out, keep_build=args.keep_build)
-    print(json.dumps({k: metrics[k] for k in ("pre_test", "post_test", "performance")}, indent=2))
+    print(json.dumps({k: metrics[k] for k in ("pre_test", "post_test", "learned_rfs", "performance")}, indent=2))
     print(f"\nResults in {run_dir}")
 
 
