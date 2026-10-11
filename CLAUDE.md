@@ -54,6 +54,32 @@ The same model code runs on every tier. Only the config changes.
 | `rtx5090.yaml` | same | `cuda_standalone` | **runs**; learning needs retuning at this size |
 | `vast_h200.yaml` | rented vast.ai H100/H200 | `cuda_standalone` | untested on an H200; a short run at this size works on the 5090 |
 
+### The three-tier showcase
+
+The PoC compares three classes of hardware on the same model:
+
+1. **CPU:** the Dell laptop.
+2. **Consumer GPU:** the RTX 5090 in vermithor.
+3. **Data-centre GPU:** an H100 or H200 rented on vast.ai.
+
+Keep all three. Vermithor's CPU is useful for debugging but does not stand in for tier 1.
+
+For a fair comparison, run each model size on each tier, with the same code, integrator and seed. `--device` runs any size config on any backend:
+
+```bash
+python -m src.main --config config/rtx5090.yaml --device cpp_standalone   # medium model on the CPU
+```
+
+| Model size (config) | Synapses | Laptop CPU | RTX 5090 | H100/H200 |
+|---|---|---|---|---|
+| Small: 16×16 retina, 100 exc (`laptop.yaml`) | 36k | to re-measure (RTF about 30 under `euler`) | RTF 1.24 | not run |
+| Medium: 32×32 retina, 1600 exc (`rtx5090.yaml`) | 4.2M | not run | RTF 1.16 | not run |
+| Large: 64×64 retina, 6400 exc (`vast_h200.yaml`) | 67M | not run (too slow; estimate from a short run) | RTF 0.47 (short run) | not run |
+
+- **Re-run the laptop column under `exponential_euler`.** The laptop's last numbers used `euler`.
+- **The laptop env needs the new stack first:** Python 3.12 and `pip install -r requirements.txt`. The laptop does not need the CUDA toolkit.
+- **Fill in the matrix only after retuning** (see Next steps). Otherwise it benchmarks a network that does not learn at the medium and large sizes.
+
 **Integrator.** `network.method` defaults to `exponential_euler`. The first full `rtx5090.yaml` run used `euler` and failed. At dt 0.5 ms, forward Euler goes unstable once many inhibitory neurons spike in one step: `gi` jumps past ~400 and `v` overshoots past E_inh. Every neuron then fired at about 180 Hz, even before training. The CPU showed the same, so it is not a GPU bug. dt 0.1 ms also fixes it, but is 5× slower.
 
 **Laptop-size reference** (`config/laptop.yaml`, seed 42, deterministic):

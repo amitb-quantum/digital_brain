@@ -73,9 +73,15 @@ def main():
     parser.add_argument("--config", default="config/laptop.yaml")
     parser.add_argument("--out", default=None, help="output root (default: config output_dir)")
     parser.add_argument("--keep-build", action="store_true", help="keep generated standalone code")
+    parser.add_argument("--device", default=None,
+                        help="override backend.device, e.g. run a GPU-sized config on the CPU")
     args = parser.parse_args()
 
-    run_dir, metrics = run_experiment(load_config(args.config), args.out, keep_build=args.keep_build)
+    cfg = load_config(args.config)
+    if args.device:
+        cfg["backend"]["device"] = args.device
+        cfg["name"] = f"{cfg['name']}-{args.device}"
+    run_dir, metrics = run_experiment(cfg, args.out, keep_build=args.keep_build)
     print(json.dumps({k: metrics[k] for k in ("pre_test", "post_test", "performance")}, indent=2))
     print(f"\nResults in {run_dir}")
 
