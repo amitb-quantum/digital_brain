@@ -66,9 +66,11 @@ def eligible(offer):
 
 
 def pick_offer(offers, machine_id, max_hourly):
-    """The approved machine's current offer, if it is within the approved rate."""
+    """The approved machine's current offer within the approved rate, or, with
+    machine_id None, the cheapest eligible offer within it (offers come sorted)."""
     return next((o for o in offers
-                 if o.get("machine_id") == machine_id and hourly_cost(o) <= max_hourly), None)
+                 if machine_id in (None, o.get("machine_id")) and hourly_cost(o) <= max_hourly),
+                None)
 
 
 def owned(instances, label, instance_id=None):
@@ -223,7 +225,7 @@ def check_preconditions(args):
                  "(shared account; one campaign at a time)")
     offer = pick_offer(search_offers(args.gpu), args.machine_id, args.max_hourly)
     if offer is None:
-        sys.exit(f"machine {args.machine_id} has no eligible offer at or below "
+        sys.exit(f"machine {args.machine_id or 'any'} has no eligible offer at or below "
                  f"${args.max_hourly:.3f}/h; re-run quote")
     hourly = args.max_hourly  # cap the lifetime at the approved rate, not today's price
     credit = account_credit()
@@ -240,7 +242,8 @@ def cmd_launch(args):
     label = f"digital-brain-{datetime.now(timezone.utc):%Y%m%d-%H%M%S}"
     campaign = CAMPAIGNS / label
     campaign.mkdir(parents=True)
-    plan = {"label": label, "machine_id": args.machine_id, "offer_id": offer["id"],
+    plan = {"label": label, "machine_id": offer["machine_id"],
+            "approved_machine": args.machine_id or "any", "offer_id": offer["id"],
             "gpu": offer["gpu_name"], "offer_hourly_usd": hourly_cost(offer),
             "max_hourly_usd": hourly, "max_cost_usd": args.max_cost, "lifetime_s": lifetime,
             "credit_before_usd": credit, "commit": commit, "config": args.config,
@@ -301,11 +304,12 @@ def run_campaign(campaign, state, args):
                 state["instance_id"] = found[0]["id"]
                 break
             log(campaign, f"create attempt {attempt + 1} failed: {exc}")
-            offer = pick_offer(search_offers(args.gpu), state["machine_id"],
+            offer = pick_offer(search_offers(args.gpu), args.machine_id,
                                state["max_hourly_usd"])
             if offer is None:
                 raise RuntimeError("approved machine no longer offered within the approved rate")
-            state.update(offer_id=offer["id"], offer_hourly_usd=hourly_cost(offer))
+            state.update(offer_id=offer["id"], machine_id=offer["machine_id"],
+                         offer_hourly_usd=hourly_cost(offer))
     else:
         raise RuntimeError("create failed three times; nothing was rented")
     state["status"] = "created"
@@ -421,7 +425,8 @@ def main():
     q.add_argument("--max-cost", type=float, default=3.0)
     q.add_argument("--top", type=int, default=5)
     la = sub.add_parser("launch", help="rent, run one config, collect, destroy")
-    la.add_argument("--machine-id", type=int, required=True, help="from `quote`")
+    la.add_argument("--machine-id", type=int, default=None,
+                    help="from `quote`; omit to take the cheapest eligible offer within --max-hourly")
     la.add_argument("--max-hourly", type=float, required=True,
                     help="approved USD/h including disk; also sets the lifetime cap")
     la.add_argument("--gpu", default="H100_SXM")

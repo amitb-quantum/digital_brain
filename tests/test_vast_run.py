@@ -51,3 +51,6 @@ def test_pick_offer_matches_machine_within_rate():
     assert vast_run.pick_offer([other, reissued], 42, 2.10)["id"] == 2
     assert vast_run.pick_offer([other, reissued], 42, 2.00) is None  # over approved rate
     assert vast_run.pick_offer([other], 42, 9.0) is None
+    cheap = OFFER | {"id": 4, "machine_id": 44, "dph_total": 1.5}
+    assert vast_run.pick_offer([cheap, reissued], None, 2.10)["id"] == 4  # any machine
+    assert vast_run.pick_offer([cheap, reissued], None, 1.0) is None
