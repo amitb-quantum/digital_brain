@@ -119,9 +119,26 @@ About 50 of the 100 excitatory neurons learn clean oriented-bar receptive fields
 - **Threshold adaptation:** `theta_plus_mV` above 0.05 (tried 0.2 and 0.5) silences the network at test time. Keep 0.05.
 - **Low responsive fraction:** partly by design (winner-take-all, sparse tuning), partly because many neurons are never recruited. At 1600 neurons only 3% respond after training. This is the main open problem.
 
+### Recruitment at the medium size (32×32 retina, 1600 exc)
+
+A "learned" neuron has a best Pearson r above 0.5 against oriented-bar templates. The split is sharp: almost all of these have r above 0.8, and the rest show nothing.
+
+| Training presentations | Learned neurons | Presentations per learned neuron |
+|---|---|---|
+| 1,500 | 75 (4.7%) | 20 |
+| 2,500 | 110 (6.9%) | 23 |
+| 5,000 | 209 (13.1%) | 24 |
+| 1,500 at laptop size (100 exc), for comparison | 48 (48%) | 31 |
+
+- **Recruitment is linear, at about one neuron per 20–30 presentations.** The medium model is under-trained rather than broken: about 19k presentations (about 1.7 h on the 5090) should recruit half the neurons.
+- **Post-test responsive fraction is a poor scale metric.** It uses 24 distinct test stimuli, and winner-take-all lets only a few neurons win each one.
+- **Decoding accuracy is just as unreliable here.** It uses 24 evaluation trials, and random weights already decode at 0.75 to 0.79 at this size. Fix the evaluation before tuning against it.
+
 ## Next steps
 
 1. **Retune for scale.** Make the learning work at 32×32 with 1600 neurons before running anything bigger.
+   - Strengthen the evaluation first: more test offsets and repeats, a learned-RF count from the bar-template score (now in a scratch script), and held-out positions.
+   - Then decide between longer training (linear recruitment) and faster recruitment per presentation.
    - Scale input drive with retina size, for example `max_rate_hz` or `norm_mean_w`, so pre-test activity stays sparse.
    - Recruit more neurons: longer training, or a larger `theta_plus` with fewer neurons.
    - Retune laptop size under `exponential_euler` to recover the about 0.1 decoding gap.
