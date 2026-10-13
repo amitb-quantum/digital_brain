@@ -240,7 +240,7 @@ python scripts/vast_run.py cleanup --campaign data/vast/LABEL   # manual destroy
 ```
 
 - **Lifetime cap.** The lifetime is `floor((max_cost - 0.50) * 3600 / hourly)`, where hourly includes 40 GB of disk.
-- **Watchdog.** An independent watchdog is armed before the create call. At the deadline it destroys every instance carrying the campaign's unique label. Keep vermithor awake and WSL running until the campaign log shows the instance destroyed.
+- **Watchdog.** An independent watchdog is armed before the create call. At the deadline it destroys every instance carrying the campaign's unique label. Keep the machine running the launcher awake (and WSL running) until the campaign log shows the instance destroyed.
 - **Refusals.** The launcher will not start if the git tree is dirty (the payload is `git archive HEAD`), if any instance already exists on the account (it is shared), or if the credit does not cover the cap.
 - **Remote setup.** `scripts/vast_remote_setup.sh` installs pinned Miniforge 26.5.3-0 (checksum verified), creates the env from `environment.yml`, then runs `pip check` and `pytest`. It has been validated locally from scratch. The image is pinned by digest: `vastai/base-image:cuda-12.9-mini-py312-2026-09-07`.
 - **Campaign folders.** `data/vast/<label>/` holds the state, logs, the per-rental private SSH key and the collected results. Git ignores it.
