@@ -238,7 +238,7 @@ python scripts/vast_run.py cleanup --campaign data/vast/LABEL   # manual destroy
 - **The repo `github.com/amitb-quantum/digital_brain` is PRIVATE.** Do not change its visibility; the owner will decide when to make it public.
 - **Never commit `digitalbrain.pdf`** (it's in `.gitignore`). It's the original source conversation. `docs/background.md` is its sanitised replacement. Keep that doc free of chat transcripts, chat links, usernames, hostnames and account details.
 - **Secrets** (for example `VAST_API_KEY`) go in `.env`, which git ignores, or in `vastai set api-key`. Never put them in code or config.
-- **vast.ai budget: USD 10 ceiling for this project** (set 2026-10-10; the owner may revise it).
+- **vast.ai budget: USD 15 ceiling for this project, up to USD 20 if really needed** (raised from USD 10 on 2026-10-13). About USD 5.75 spent so far.
   - Every rental needs the owner's approval of a fresh quote.
   - The account is shared with another project. Before renting, check the live balance and that no other instance is running. Never spend another project's allowance.
 - **vast.ai instances must be destroyed when a run finishes.** An idle H200 costs about $50 a day. Any launch script must tear the instance down.
