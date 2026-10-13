@@ -77,3 +77,9 @@ def test_forecast_scales_calibration_rtf():
     forecast, rtf = vast_run.forecast_run_s(calib, 7112.0, safety=1.3)
     assert rtf == pytest.approx(2.0)
     assert forecast == pytest.approx(7112.0 / 2.0 * 1.3 + 40.0)
+
+
+def test_pick_offer_skips_excluded_machines():
+    a, b = OFFER | {"id": 5, "machine_id": 50, "dph_total": 1.0}, OFFER | {"id": 6, "machine_id": 60}
+    assert vast_run.pick_offer([a, b], None, 3.0)["id"] == 5
+    assert vast_run.pick_offer([a, b], None, 3.0, exclude={50})["id"] == 6

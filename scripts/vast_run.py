@@ -67,12 +67,12 @@ def eligible(offer):
             and (offer.get("disk_space") or 0) >= DISK_GB)
 
 
-def pick_offer(offers, machine_id, max_hourly):
+def pick_offer(offers, machine_id, max_hourly, exclude=()):
     """The approved machine's current offer within the approved rate, or, with
     machine_id None, the cheapest eligible offer within it (offers come sorted)."""
     return next((o for o in offers
-                 if machine_id in (None, o.get("machine_id")) and hourly_cost(o) <= max_hourly),
-                None)
+                 if machine_id in (None, o.get("machine_id")) and hourly_cost(o) <= max_hourly
+                 and o.get("machine_id") not in exclude), None)
 
 
 def in_country(offer, country):
@@ -254,7 +254,8 @@ def check_preconditions(args):
     if others:
         sys.exit(f"refusing to launch: {len(others)} instance(s) already on the account "
                  "(shared account; one campaign at a time)")
-    offer = pick_offer(search_offers(args.gpu, args.country), args.machine_id, args.max_hourly)
+    offer = pick_offer(search_offers(args.gpu, args.country), args.machine_id, args.max_hourly,
+                       args.exclude_machines)
     if offer is None:
         sys.exit(f"machine {args.machine_id or 'any'} has no eligible offer at or below "
                  f"${args.max_hourly:.3f}/h; re-run quote")
@@ -336,7 +337,7 @@ def run_campaign(campaign, state, args):
                 break
             log(campaign, f"create attempt {attempt + 1} failed: {exc}")
             offer = pick_offer(search_offers(args.gpu, args.country), args.machine_id,
-                               state["max_hourly_usd"])
+                               state["max_hourly_usd"], args.exclude_machines)
             if offer is None:
                 raise RuntimeError("approved machine no longer offered within the approved rate")
             state.update(offer_id=offer["id"], machine_id=offer["machine_id"],
@@ -438,8 +439,13 @@ def calibrate(campaign, state, args, device):
 
 def wait_for_ssh(campaign, state):
     deadline = min(time.time() + 1200, state["deadline_epoch"] - COLLECT_MARGIN_S)
+    last = None
     while time.time() < deadline:
         info = api().show_instance(state["instance_id"]) or {}
+        status = (info.get("actual_status"), info.get("status_msg"))
+        if status != last:  # so a host that never comes up can be diagnosed
+            log(campaign, f"instance status: {status[0]} | {(status[1] or '').strip()[:160]}")
+            last = status
         if info.get("actual_status") == "running" and info.get("ssh_host"):
             state.update(ssh_host=info["ssh_host"], ssh_port=info["ssh_port"])
             if ssh(state, "true", timeout=60, check=False).returncode == 0:
@@ -494,6 +500,8 @@ def main():
     la.add_argument("--max-cost", type=float, required=True, help="hard USD cap for this rental")
     la.add_argument("--max-hours", type=float, default=6.0)
     la.add_argument("--country", default=None, help="two-letter code, e.g. US")
+    la.add_argument("--exclude-machines", type=lambda v: {int(x) for x in v.split(",")},
+                    default=set(), help="comma-separated machine ids to skip (e.g. a host that never came up)")
     la.add_argument("--yes", action="store_true", help="actually rent (owner-approved quote)")
     c = sub.add_parser("cleanup", help="destroy a campaign's instance and verify")
     c.add_argument("--campaign", required=True)
