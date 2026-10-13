@@ -72,11 +72,18 @@ python -m src.main --config config/rtx5090.yaml --device cpp_standalone   # medi
 
 | Model size (config) | Synapses | Laptop CPU | RTX 5090 | H100/H200 |
 |---|---|---|---|---|
-| Small: 16×16 retina, 100 exc (`laptop.yaml`) | 36k | to re-measure (RTF about 30 under `euler`) | RTF 1.24 | **RTF 4.83** (H100 PCIe) |
-| Medium: 32×32 retina, 1600 exc (`rtx5090.yaml`, 20k presentations) | 4.2M | not run | RTF 1.15 | **RTF 4.13** (H100 SXM) |
+| Small: 16×16 retina, 100 exc (`laptop.yaml`) | 36k | **RTF 16.4** | RTF 1.24 | **RTF 4.83** (H100 PCIe) |
+| Medium: 32×32 retina, 1600 exc (`rtx5090.yaml`, 20k presentations) | 4.2M | **RTF 0.48** | RTF 1.15 | **RTF 4.13** (H100 SXM) |
 | Large: 64×64 retina, 6400 exc (`vast_h200.yaml`, 96 Hz, 20k presentations) | 67M | not run (too slow; estimate from a short run) | RTF 0.73 | not run |
 
-- **Re-run the laptop column under `exponential_euler`.** The laptop's last numbers used `euler`.
+- **Laptop column measured 2026-10-12** (Dell, Core Ultra 9 288V, `cpp_standalone`, 1 thread, `exponential_euler`, 120-trial test):
+  - **Small:** 637 s of biological time in 39 s, RTF 16.4, 8.9×10⁶ synaptic events per second. Learned RFs 51/100, decoding 0.49 → 0.76, OSI 0.57 → 0.96. This is identical to vermithor's CPU at seed 42: the CPU path is deterministic across machines.
+  - **Medium:** 7112 s in 4.15 h, RTF 0.48, 8.4×10⁶ events per second.
+    - Learned RFs 587/1600, decoding 0.89 → 1.00, OSI 0.66 → 0.997.
+    - Close to the GPU runs (594 RFs, 776,326 vs 775,201 exc spikes) but not identical: the CPU and CUDA RNG streams differ.
+- **Speedups over the laptop CPU:**
+  - Small: the 5090 is 13× slower and the H100 3.4× slower. Per-step GPU latency dominates.
+  - Medium: the 5090 is 2.4× faster and the H100 SXM 8.7× faster.
 - **The laptop env needs the new stack first:** Python 3.12 and `pip install -r requirements.txt`. The laptop does not need the CUDA toolkit.
 - **Fill in the matrix only after retuning** (see Next steps). Otherwise it benchmarks a network that does not learn at the medium and large sizes.
 
