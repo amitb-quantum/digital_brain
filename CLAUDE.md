@@ -74,7 +74,7 @@ python -m src.main --config config/rtx5090.yaml --device cpp_standalone   # medi
 |---|---|---|---|---|
 | Small: 16×16 retina, 100 exc (`laptop.yaml`) | 36k | **RTF 16.4** | RTF 1.24 | **RTF 4.83** (H100 PCIe) |
 | Medium: 32×32 retina, 1600 exc (`rtx5090.yaml`, 20k presentations) | 4.2M | **RTF 0.48** | RTF 1.15 | **RTF 4.13** (H100 SXM) |
-| Large: 64×64 retina, 6400 exc (`vast_h200.yaml`, 96 Hz, 20k presentations) | 67M | not run (too slow; estimate from a short run) | RTF 0.73 | not run |
+| Large: 64×64 retina, 6400 exc (`vast_h200.yaml`, 96 Hz, 20k presentations) | 67M | not run (too slow; estimate from a short run) | RTF 0.73 | **RTF 1.38** (H100 NVL) |
 
 - **Laptop column measured 2026-10-12** (Dell, Core Ultra 9 288V, `cpp_standalone`, 1 thread, `exponential_euler`, 120-trial test):
   - **Small:** 637 s of biological time in 39 s, RTF 16.4, 8.9×10⁶ synaptic events per second. Learned RFs 51/100, decoding 0.49 → 0.76, OSI 0.57 → 0.96. This is identical to vermithor's CPU at seed 42: the CPU path is deterministic across machines.
@@ -154,6 +154,19 @@ About 50 of the 100 excitatory neurons learn clean oriented-bar receptive fields
   - 7.3×10⁷ synaptic events per second.
 - **Bit-identical to the 5090 run:** exactly 776,326 excitatory spikes, 594 learned RFs, OSI 0.659 → 0.997 and accuracy 0.892 → 0.933. brian2cuda with a fixed seed is deterministic across Blackwell and Hopper, so the GPU tiers differ only in speed.
 - **Rental:** about 36 min (SSH 111 s, setup 4 min 41 s, run 29 min), about $1.14 of credit.
+
+### Large model on an H100 NVL (2026-10-13, machine 114659, Virginia, $3.04/h, about $4.80)
+
+- **Run:** 7112 s of biological time in 5144 s, plus 9 s compile.
+  - RTF 1.38, against 0.73 on the 5090: 1.9× faster.
+  - 9.9×10⁷ synaptic events per second.
+- **Bit-identical to the 5090 run:** 945,729 exc spikes, 532 learned RFs, OSI 0.643 → 0.997, decoding 0.908 → 0.950.
+- **Timeline:** SSH ready in 3.6 min, setup 38 s, calibration 3 min, run 86 min, 400 MB collected in about 1 min. 95 min from create to destroy.
+- **Calibration accuracy:** calibration RTF was 1.13 against 1.38 for the full run. Short test-heavy runs under-predict by about 1.2×, the same direction as on the 5090 (0.67 against 0.73). The 1.3× forecast margin was therefore about 1.6× in effect. 1.1× would be enough for future runs.
+- **The speedup shrinks with size because the large model is compute-bound** (GPU about 85% busy): 3.6–3.9× at the small and medium sizes, 1.9× at the large one. An H100 SXM (700 W, higher clocks) should do better than this 400 W NVL.
+- **Two aborted attempts before this:**
+  1. A US H100 SXM (machine 108977) never came up: about $0.57.
+  2. A calibration-only abort on this NVL under an $8 cap: about $0.30.
 
 ### Failed large run on an H100 NVL (2026-10-13, machine 114659, Virginia, $3.04/h, about $4.15 lost)
 
@@ -238,7 +251,7 @@ python scripts/vast_run.py cleanup --campaign data/vast/LABEL   # manual destroy
 - **The repo `github.com/amitb-quantum/digital_brain` is PRIVATE.** Do not change its visibility; the owner will decide when to make it public.
 - **Never commit `digitalbrain.pdf`** (it's in `.gitignore`). It's the original source conversation. `docs/background.md` is its sanitised replacement. Keep that doc free of chat transcripts, chat links, usernames, hostnames and account details.
 - **Secrets** (for example `VAST_API_KEY`) go in `.env`, which git ignores, or in `vastai set api-key`. Never put them in code or config.
-- **vast.ai budget: USD 15 ceiling for this project, up to USD 20 if really needed** (raised from USD 10 on 2026-10-13). About USD 5.75 spent so far.
+- **vast.ai budget: USD 15 ceiling for this project, up to USD 20 if really needed** (raised from USD 10 on 2026-10-13). About USD 11.40 spent so far (2026-10-13).
   - Every rental needs the owner's approval of a fresh quote.
   - The account is shared with another project. Before renting, check the live balance and that no other instance is running. Never spend another project's allowance.
 - **vast.ai instances must be destroyed when a run finishes.** An idle H200 costs about $50 a day. Any launch script must tear the instance down.
