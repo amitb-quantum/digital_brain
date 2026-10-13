@@ -36,7 +36,7 @@ We ran a biophysical spiking model of primary visual cortex (V1) on three classe
 |---|---|---|---|
 | Small (36k synapses) | **RTF 16.4** | RTF 1.19 | RTF 4.83 (H100 PCIe) † |
 | Medium (4.2M synapses) | RTF 0.48 | RTF 1.15 | **RTF 4.13** (H100 SXM) |
-| Large (67M synapses) | not run (about 6 h estimated) | RTF 0.73 | **RTF 1.38** (H100 NVL); SXM: *pending* |
+| Large (67M synapses) | not run (about 17 h estimated) | RTF 0.73 | **RTF 1.38** (H100 NVL); SXM: *pending* |
 
 Throughput in synaptic events per wall-clock second:
 
