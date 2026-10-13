@@ -38,7 +38,7 @@ def test_ineligible_offers_are_filtered(field, bad):
 
 
 def test_ownership_requires_label_and_id():
-    instances = [{"id": 7, "label": "digital-brain-a"}, {"id": 8, "label": "spectrans-n640"},
+    instances = [{"id": 7, "label": "digital-brain-a"}, {"id": 8, "label": "other-project-run"},
                  {"id": 9, "label": "digital-brain-a"}]
     assert [i["id"] for i in vast_run.owned(instances, "digital-brain-a", 7)] == [7]
     assert [i["id"] for i in vast_run.owned(instances, "digital-brain-a")] == [7, 9]
