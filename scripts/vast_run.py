@@ -42,7 +42,7 @@ RESERVE_USD = 0.50          # transfer, rounding and posting lag
 COLLECT_MARGIN_S = 600      # stop waiting for the job this long before the deadline
 REMOTE = "/opt/db"
 CALIBRATION_PRESENTATIONS = 200
-FORECAST_SAFETY = 1.3       # training runs a bit slower than the plasticity-free test blocks
+FORECAST_SAFETY = 1.1       # short test-heavy runs under-predict full-run RTF by 1.09-1.22x (5090, H100 NVL)
 MIN_CPU_CORES, MIN_RAM_GB, MIN_CUDA = 4, 16, 12.9
 
 
