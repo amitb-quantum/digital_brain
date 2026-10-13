@@ -32,7 +32,7 @@ We ran a biophysical spiking model of primary visual cortex (V1) on three classe
 
 ## Speed
 
-| Model | Laptop CPU (Core Ultra 9 288V, 1 thread) | RTX 5090 32 GB (WSL2) | H100 (rented, native Linux) |
+| Model | Laptop CPU (Core Ultra 9 288V, 1 thread) | RTX 5090 32 GB (Core Ultra 9 285K host, WSL2) | H100 (rented, native Linux) |
 |---|---|---|---|
 | Small (36k synapses) | **RTF 16.4** | RTF 1.19 | RTF 4.83 (H100 PCIe) † |
 | Medium (4.2M synapses) | RTF 0.48 | RTF 1.15 | **RTF 4.13** (H100 SXM) |
@@ -72,7 +72,7 @@ Throughput in synaptic events per wall-clock second:
 ## Reproducibility
 
 - **GPU against GPU: bit-identical.** The medium and large models produced identical spike counts and learned weights on the RTX 5090 and on the H100: 776,326 and 945,729 excitatory spikes respectively.
-- **CPU against CPU: identical across machines.** The laptop and a desktop CPU produced identical small-model results.
+- **CPU against CPU: identical across machines.** The laptop (Core Ultra 9 288V) and the desktop (Core Ultra 9 285K) produced identical small-model results.
 - **CPU against GPU: close, not identical.** The random-number streams differ, so results are close but not bit-identical (medium model: 587 against 594 learned receptive fields).
 
 ## Lessons we would pass on

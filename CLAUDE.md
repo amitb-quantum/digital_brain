@@ -50,7 +50,7 @@ The same model code runs on every tier. Only the config changes.
 |---|---|---|---|
 | `smoke.yaml` | any | `runtime` (numpy) | used by tests |
 | `laptop.yaml` | Laptop, Intel Core Ultra 9 288V, WSL2, no NVIDIA GPU | `cpp_standalone`, 1 thread | **validated** |
-| `rtx5090_validate.yaml` | Desktop "vermithor", RTX 5090 32 GB, WSL2 | `cuda_standalone` | **validated**: learns, close to the CPU reference |
+| `rtx5090_validate.yaml` | Desktop: Intel Core Ultra 9 285K + RTX 5090 32 GB, WSL2 | `cuda_standalone` | **validated**: learns, close to the CPU reference |
 | `rtx5090.yaml` | same | `cuda_standalone` | **runs**; learning needs retuning at this size |
 | `vast_h200.yaml` | rented vast.ai H100/H200 | `cuda_standalone` | untested on an H200; a short run at this size works on the 5090 |
 
@@ -59,10 +59,10 @@ The same model code runs on every tier. Only the config changes.
 The PoC compares three classes of hardware on the same model:
 
 1. **CPU:** the Dell laptop.
-2. **Consumer GPU:** the RTX 5090 in vermithor.
+2. **Consumer GPU:** the RTX 5090 desktop (Intel Core Ultra 9 285K).
 3. **Data-centre GPU:** an H100 or H200 rented on vast.ai.
 
-Keep all three. Vermithor's CPU is useful for debugging but does not stand in for tier 1.
+Keep all three. The desktop's CPU is useful for debugging but does not stand in for tier 1.
 
 For a fair comparison, run each model size on each tier, with the same code, integrator and seed. `--device` runs any size config on any backend:
 
@@ -77,7 +77,7 @@ python -m src.main --config config/rtx5090.yaml --device cpp_standalone   # medi
 | Large: 64×64 retina, 6400 exc (`vast_h200.yaml`, 96 Hz, 20k presentations) | 67M | not run (too slow; estimate from a short run) | RTF 0.73 | **RTF 1.38** (H100 NVL) |
 
 - **Laptop column measured 2026-10-12** (Dell, Core Ultra 9 288V, `cpp_standalone`, 1 thread, `exponential_euler`, 120-trial test):
-  - **Small:** 637 s of biological time in 39 s, RTF 16.4, 8.9×10⁶ synaptic events per second. Learned RFs 51/100, decoding 0.49 → 0.76, OSI 0.57 → 0.96. This is identical to vermithor's CPU at seed 42: the CPU path is deterministic across machines.
+  - **Small:** 637 s of biological time in 39 s, RTF 16.4, 8.9×10⁶ synaptic events per second. Learned RFs 51/100, decoding 0.49 → 0.76, OSI 0.57 → 0.96. This is identical to the desktop CPU at seed 42: the CPU path is deterministic across machines.
   - **Medium:** 7112 s in 4.15 h, RTF 0.48, 8.4×10⁶ events per second.
     - Learned RFs 587/1600, decoding 0.89 → 1.00, OSI 0.66 → 0.997.
     - Close to the GPU runs (594 RFs, 776,326 vs 775,201 exc spikes) but not identical: the CPU and CUDA RNG streams differ.
@@ -98,9 +98,9 @@ python -m src.main --config config/rtx5090.yaml --device cpp_standalone   # medi
 | Mean OSI | 0.65 → 0.93 | 0.65 → 0.935 |
 | Responsive fraction in post-test | 0.17 | 0.15 |
 | Real-time factor, laptop CPU | about 30 | not measured |
-| Real-time factor, vermithor CPU | about 40 | about 32 |
+| Real-time factor, desktop CPU (285K) | about 40 | about 32 |
 
-**Current small-model reference** (`laptop.yaml` with `exponential_euler`, run on vermithor's CPU, seeds 42, 1, 2, 3):
+**Current small-model reference** (`laptop.yaml` with `exponential_euler`, run on the desktop's CPU (285K), seeds 42, 1, 2, 3):
 - The test set is now 5 offsets × 4 repeats: 120 decoded trials, up from 24.
 - Decoding accuracy 0.49 → 0.80 (mean; per seed 0.76 to 0.83).
 - Mean OSI 0.67 → 0.96.
@@ -115,7 +115,7 @@ About 50 of the 100 excitatory neurons learn clean oriented-bar receptive fields
 
 ### RTX 5090 results (2026-10-10, WSL2, CUDA 12.9, brian2cuda 1.0b1)
 
-| Model size | Synapses | GPU RTF | CPU RTF, 1 thread (vermithor) | GPU µs per 0.5 ms step |
+| Model size | Synapses | GPU RTF | CPU RTF, 1 thread (desktop 285K) | GPU µs per 0.5 ms step |
 |---|---|---|---|---|
 | 16×16 retina, 100 exc (`rtx5090_validate`) | 36k | 1.24 | about 32 to 40 | about 400 |
 | 32×32 retina, 1600 exc (`rtx5090`) | 4.2M | 1.16 (full run) | 0.44 (8 threads: 0.46) | about 430 |
@@ -135,7 +135,7 @@ About 50 of the 100 excitatory neurons learn clean oriented-bar receptive fields
 - **Threshold adaptation:** `theta_plus_mV` above 0.05 (tried 0.2 and 0.5) silences the network at test time. Keep 0.05.
 - **Low responsive fraction:** partly by design (winner-take-all, sparse tuning), partly because many neurons are never recruited. At 1600 neurons only 3% respond after training. This is the main open problem.
 
-### First vast.ai run (2026-10-11, H100 PCIe 80 GB, machine 149333, $2.40/h)
+### First vast.ai run (2026-10-11, H100 PCIe 80 GB, $2.40/h)
 
 - **Run:** `rtx5090_validate.yaml` (the small model) on `cuda_standalone` under native Linux, driver 595.71.
   - RTF 4.83: 558.6 s of biological time in 115.6 s, plus 15.6 s compile.
@@ -147,7 +147,7 @@ About 50 of the 100 excitatory neurons learn clean oriented-bar receptive fields
   1. `vastai attach ssh` prints a Python repr, which crashed the first attempt. Cleanup destroyed that instance within 4 s.
   2. `cd X && cmd &` held ssh open until the job ended, which would have killed long runs at the 600 s ssh timeout. Both are fixed.
 
-### Medium model on an H100 SXM (2026-10-11, machine 150369, $2.08/h)
+### Medium model on an H100 SXM (2026-10-11, $2.08/h)
 
 - **Run:** `rtx5090.yaml` with 20k presentations: 7112 s of biological time in 1724 s, plus 16 s compile.
   - RTF 4.13, against 1.15 on the 5090 under WSL2: 3.6× faster.
@@ -155,7 +155,7 @@ About 50 of the 100 excitatory neurons learn clean oriented-bar receptive fields
 - **Bit-identical to the 5090 run:** exactly 776,326 excitatory spikes, 594 learned RFs, OSI 0.659 → 0.997 and accuracy 0.892 → 0.933. brian2cuda with a fixed seed is deterministic across Blackwell and Hopper, so the GPU tiers differ only in speed.
 - **Rental:** about 36 min (SSH 111 s, setup 4 min 41 s, run 29 min), about $1.14 of credit.
 
-### Large model on an H100 NVL (2026-10-13, machine 114659, Virginia, $3.04/h, about $4.80)
+### Large model on an H100 NVL (2026-10-13, Virginia, $3.04/h, about $4.80)
 
 - **Run:** 7112 s of biological time in 5144 s, plus 9 s compile.
   - RTF 1.38, against 0.73 on the 5090: 1.9× faster.
@@ -165,10 +165,10 @@ About 50 of the 100 excitatory neurons learn clean oriented-bar receptive fields
 - **Calibration accuracy:** calibration RTF was 1.13 against 1.38 for the full run. Short test-heavy runs under-predict by about 1.2×, the same direction as on the 5090 (0.67 against 0.73). The 1.3× forecast margin was therefore about 1.6× in effect. 1.1× would be enough for future runs.
 - **The speedup shrinks with size because the large model is compute-bound** (GPU about 85% busy): 3.6–3.9× at the small and medium sizes, 1.9× at the large one. An H100 SXM (700 W, higher clocks) should do better than this 400 W NVL.
 - **Two aborted attempts before this:**
-  1. A US H100 SXM (machine 108977) never came up: about $0.57.
+  1. A US H100 SXM never came up: about $0.57.
   2. A calibration-only abort on this NVL under an $8 cap: about $0.30.
 
-### Failed large run on an H100 NVL (2026-10-13, machine 114659, Virginia, $3.04/h, about $4.15 lost)
+### Failed large run on an H100 NVL (2026-10-13, Virginia, $3.04/h, about $4.15 lost)
 
 - **What happened:** `vast_h200.yaml` had not finished after 73 min of simulation (RTF below 1.6). The controller reached its cutoff, collected only build files and destroyed the instance. Brian2 standalone writes results only at the end, so a cut-off run returns nothing.
 - **Why the estimate was wrong:** I assumed the medium model's 3.6× H100-to-5090 speedup would hold. But the medium model is latency-bound (GPU about 53% busy) and the large one is compute-bound (about 85%), so that speedup does not transfer.
@@ -244,7 +244,7 @@ python scripts/vast_run.py cleanup --campaign data/vast/LABEL   # manual destroy
 - **Refusals.** The launcher will not start if the git tree is dirty (the payload is `git archive HEAD`), if any instance already exists on the account (it is shared), or if the credit does not cover the cap.
 - **Remote setup.** `scripts/vast_remote_setup.sh` installs pinned Miniforge 26.5.3-0 (checksum verified), creates the env from `environment.yml`, then runs `pip check` and `pytest`. It has been validated locally from scratch. The image is pinned by digest: `vastai/base-image:cuda-12.9-mini-py312-2026-09-07`.
 - **Campaign folders.** `data/vast/<label>/` holds the state, logs, the per-rental private SSH key and the collected results. Git ignores it.
-- **Design.** The design follows the SpectraNS-3D vast.ai handoff: search is not rental, destroy by label and ID then verify absence, check for the label before retrying a lost create, and collect small files first. Do not use that project's scripts, key or budget.
+- **Design.** Search is not rental, destroy by label and ID then verify absence, check for the label before retrying a lost create, and collect small files first.
 
 ## Rules
 
