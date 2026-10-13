@@ -61,3 +61,19 @@ def test_pick_offer_matches_machine_within_rate():
 def test_country_filter(geo, ok):
     assert vast_run.in_country(OFFER | {"geolocation": geo}, "US") is ok
     assert vast_run.in_country(OFFER | {"geolocation": geo}, None)
+
+
+def test_planned_bio_time_matches_real_runs():
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from src.config import load_config
+    # metrics.json bio_time_s of the 20k medium run and the small laptop run
+    assert vast_run.planned_bio_s(load_config("config/rtx5090.yaml")) == pytest.approx(7112.0)
+    assert vast_run.planned_bio_s(load_config("config/laptop.yaml")) == pytest.approx(637.0)
+
+
+def test_forecast_scales_calibration_rtf():
+    calib = {"performance": {"bio_time_s": 182.0, "sim_wall_s": 91.0, "compile_wall_s": 40.0}}
+    forecast, rtf = vast_run.forecast_run_s(calib, 7112.0, safety=1.3)
+    assert rtf == pytest.approx(2.0)
+    assert forecast == pytest.approx(7112.0 / 2.0 * 1.3 + 40.0)

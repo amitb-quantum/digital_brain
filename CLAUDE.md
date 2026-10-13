@@ -155,6 +155,16 @@ About 50 of the 100 excitatory neurons learn clean oriented-bar receptive fields
 - **Bit-identical to the 5090 run:** exactly 776,326 excitatory spikes, 594 learned RFs, OSI 0.659 → 0.997 and accuracy 0.892 → 0.933. brian2cuda with a fixed seed is deterministic across Blackwell and Hopper, so the GPU tiers differ only in speed.
 - **Rental:** about 36 min (SSH 111 s, setup 4 min 41 s, run 29 min), about $1.14 of credit.
 
+### Failed large run on an H100 NVL (2026-10-13, machine 114659, Virginia, $3.04/h, about $4.15 lost)
+
+- **What happened:** `vast_h200.yaml` had not finished after 73 min of simulation (RTF below 1.6). The controller reached its cutoff, collected only build files and destroyed the instance. Brian2 standalone writes results only at the end, so a cut-off run returns nothing.
+- **Why the estimate was wrong:** I assumed the medium model's 3.6× H100-to-5090 speedup would hold. But the medium model is latency-bound (GPU about 53% busy) and the large one is compute-bound (about 85%), so that speedup does not transfer.
+- **A point in this host's favour:** the US host set up in 38 s, against 1.5 to 4.7 min overseas. `--country US` filters for it.
+- **Launcher fixes:**
+  1. Before the full run, a 200-presentation calibration of the same config on the rented host measures RTF and forecasts the full run (×1.3 margin). If the forecast does not fit before the collection cutoff, it aborts right away.
+  2. `build/` folders are no longer collected (2.7 GB, 4 min of paid teardown).
+- **Agree time-critical decisions in advance,** such as one bounded extension, because an approval that arrives after the cutoff cannot save the run.
+
 ### Recruitment at the medium size (32×32 retina, 1600 exc)
 
 A "learned" neuron has a best Pearson r above 0.5 against oriented-bar templates. The split is sharp: almost all of these have r above 0.8, and the rest show nothing.

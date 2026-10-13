@@ -41,6 +41,8 @@ DISK_GB = 40
 RESERVE_USD = 0.50          # transfer, rounding and posting lag
 COLLECT_MARGIN_S = 600      # stop waiting for the job this long before the deadline
 REMOTE = "/opt/db"
+CALIBRATION_PRESENTATIONS = 200
+FORECAST_SAFETY = 1.3       # training runs a bit slower than the plasticity-free test blocks
 MIN_CPU_CORES, MIN_RAM_GB, MIN_CUDA = 4, 16, 12.9
 
 
@@ -79,6 +81,23 @@ def in_country(offer, country):
     if country is None:
         return True
     return (offer.get("geolocation") or "").split(",")[-1].strip().upper() == country.upper()
+
+
+def planned_bio_s(cfg):
+    """Biological seconds in a run: pre-test + training + post-test presentations."""
+    t, s = cfg["test"], cfg["stimulus"]
+    n_test = t["n_orientations"] * len(t["offsets_px"]) * t["repeats"]
+    n = cfg["training"]["n_presentations"] + 2 * n_test
+    return n * (s["present_ms"] + s["rest_ms"]) / 1000
+
+
+def forecast_run_s(calibration, full_bio_s, safety=FORECAST_SAFETY):
+    """Wall seconds for the full run, from a short calibration run's metrics.json.
+    Brian2 standalone writes results only at the end, so a run cut off by the
+    deadline returns nothing: forecast before committing the rental to it."""
+    perf = calibration["performance"]
+    rtf = perf["bio_time_s"] / perf["sim_wall_s"]
+    return full_bio_s / rtf * safety + (perf["compile_wall_s"] or 0), rtf
 
 
 def owned(instances, label, instance_id=None):
@@ -352,6 +371,7 @@ def run_campaign(campaign, state, args):
         raise RuntimeError("remote setup failed; see setup.log in the campaign directory")
 
     device = f" --device {shlex.quote(args.device)}" if args.device else ""
+    calibrate(campaign, state, args, device)
     # Fully detached (own session, no stdin/stdout tie to ssh). In the first
     # trial the launch ssh did not return until the job finished; with a
     # 600 s timeout that would have killed the controller on any long run.
@@ -388,6 +408,31 @@ def run_campaign(campaign, state, args):
     collect(campaign, state)
 
 
+def calibrate(campaign, state, args, device):
+    """Short run of the same config on this host; abort if the full run won't fit."""
+    sys.path.insert(0, str(REPO))
+    from src.config import load_config
+    full_bio = planned_bio_s(load_config(REPO / args.config))
+    log(campaign, f"calibrating: {CALIBRATION_PRESENTATIONS} presentations "
+                  f"(full run = {full_bio:.0f} s biological)")
+    remaining = state["deadline_epoch"] - time.time() - COLLECT_MARGIN_S
+    out = ssh(state, f"cd {REMOTE}/project && {REMOTE}/miniforge/bin/conda run -n digital-brain "
+                     f"--no-capture-output python -m src.main --config {shlex.quote(args.config)}"
+                     f"{device} --n-presentations {CALIBRATION_PRESENTATIONS} --no-plots "
+                     f"--out {REMOTE}/calibration > {REMOTE}/calibration.log 2>&1 && "
+                     f"cat {REMOTE}/calibration/*/metrics.json",
+              timeout=max(60, int(remaining)))
+    forecast, rtf = forecast_run_s(json.loads(out.stdout), full_bio)
+    remaining = state["deadline_epoch"] - time.time() - COLLECT_MARGIN_S
+    state.update(calibration_rtf=rtf, forecast_s=forecast)
+    save_state(campaign, state)
+    log(campaign, f"calibration RTF {rtf:.2f}: full run forecast {forecast / 60:.0f} min "
+                  f"(x{FORECAST_SAFETY} margin), {remaining / 60:.0f} min left before collection")
+    if forecast > remaining:
+        raise RuntimeError(f"forecast {forecast / 60:.0f} min exceeds the {remaining / 60:.0f} min "
+                           "left under the cap; aborting before the full run")
+
+
 def wait_for_ssh(campaign, state):
     deadline = min(time.time() + 1200, state["deadline_epoch"] - COLLECT_MARGIN_S)
     while time.time() < deadline:
@@ -405,8 +450,9 @@ def wait_for_ssh(campaign, state):
 def collect(campaign, state):
     """Bring back logs first, then run outputs; small files before big ones."""
     ssh(state, f"nvidia-smi -q > {REMOTE}/nvidia-smi.txt 2>&1; cd {REMOTE} && "
-               f"tar -czf results.tar.gz --ignore-failed-read setup.log run.log run.exit "
-               f"nvidia-smi.txt project/data/runs 2>/dev/null; true", check=False)
+               f"tar -czf results.tar.gz --ignore-failed-read --exclude=build setup.log "
+               f"calibration.log run.log run.exit nvidia-smi.txt calibration project/data/runs "
+               f"2>/dev/null; true", check=False)
     try:
         scp(state, f"root@{state['ssh_host']}:{REMOTE}/results.tar.gz", str(campaign))
         subprocess.run(["tar", "-xzf", str(campaign / "results.tar.gz"), "-C", str(campaign)],
