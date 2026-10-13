@@ -34,7 +34,7 @@ We ran a biophysical spiking model of primary visual cortex (V1) on three classe
 
 | Model | Laptop CPU (Core Ultra 9 288V, 1 thread) | RTX 5090 32 GB (WSL2) | H100 (rented, native Linux) |
 |---|---|---|---|
-| Small (36k synapses) | **RTF 16.4** | RTF 1.24 † | RTF 4.83 (H100 PCIe) † |
+| Small (36k synapses) | **RTF 16.4** | RTF 1.19 | RTF 4.83 (H100 PCIe) † |
 | Medium (4.2M synapses) | RTF 0.48 | RTF 1.15 | **RTF 4.13** (H100 SXM) |
 | Large (67M synapses) | not run (about 6 h estimated) | RTF 0.73 | **RTF 1.38** (H100 NVL); SXM: *pending* |
 
@@ -45,7 +45,7 @@ Throughput in synaptic events per wall-clock second:
 | Medium | 8.4×10⁶ | 2.0×10⁷ | 7.3×10⁷ |
 | Large | – | 5.2×10⁷ | 9.9×10⁷ |
 
-† Measured with an earlier, shorter test schedule (559 s of biological time). At this size every GPU is latency-bound, so the per-step cost and the RTF are essentially unchanged.
+† Measured with an earlier, shorter test schedule (559 s of biological time). At this size every GPU is latency-bound, so the per-step cost and the RTF are essentially unchanged. The RTX 5090 gave RTF 1.24 on the old schedule and 1.19 on the current one.
 
 ### Why the curves cross
 
