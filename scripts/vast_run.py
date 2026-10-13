@@ -123,10 +123,13 @@ def api():
 
 
 def search_offers(gpu, country=None):
-    query = (f"gpu_name={gpu} num_gpus=1 verified=true rentable=true rented=false "
-             f"reliability>0.99")
-    return sorted((o for o in api().search_offers(query=query, order="dph_total")
-                   if eligible(o) and in_country(o, country)), key=hourly_cost)
+    """gpu may be a comma-separated list, e.g. H100_SXM,H100_NVL,H100_PCIE."""
+    offers = []
+    for name in gpu.split(","):
+        query = (f"gpu_name={name.strip()} num_gpus=1 verified=true rentable=true "
+                 f"rented=false reliability>0.99")
+        offers += api().search_offers(query=query, order="dph_total")
+    return sorted((o for o in offers if eligible(o) and in_country(o, country)), key=hourly_cost)
 
 
 def account_credit():
