@@ -74,7 +74,7 @@ python -m src.main --config config/rtx5090.yaml --device cpp_standalone   # medi
 |---|---|---|---|---|
 | Small: 16×16 retina, 100 exc (`laptop.yaml`) | 36k | to re-measure (RTF about 30 under `euler`) | RTF 1.24 | **RTF 4.83** (H100 PCIe) |
 | Medium: 32×32 retina, 1600 exc (`rtx5090.yaml`, 20k presentations) | 4.2M | not run | RTF 1.15 | **RTF 4.13** (H100 SXM) |
-| Large: 64×64 retina, 6400 exc (`vast_h200.yaml`) | 67M | not run (too slow; estimate from a short run) | RTF 0.47 (short run) | not run |
+| Large: 64×64 retina, 6400 exc (`vast_h200.yaml`, 96 Hz, 20k presentations) | 67M | not run (too slow; estimate from a short run) | RTF 0.73 | not run |
 
 - **Re-run the laptop column under `exponential_euler`.** The laptop's last numbers used `euler`.
 - **The laptop env needs the new stack first:** Python 3.12 and `pip install -r requirements.txt`. The laptop does not need the CUDA toolkit.
@@ -180,7 +180,12 @@ A "learned" neuron has a best Pearson r above 0.5 against oriented-bar templates
 | 128 | 0.30 | 370 | 37 | 0.79 → 0.92 | 0.66 |
 
 - **Why 96:** bars are twice as long at 64×64, so halving the rate keeps input per presentation about the same as the working medium model.
-- **Recruitment** is about one neuron per 15–20 presentations, so 20k presentations should recruit about 1000 of the 6400.
+- **Full run on the 5090** (20k presentations, RTF 0.73, 7112 s of biological time in 2.7 h, 5.2×10⁷ synaptic events per second):
+  - learned RFs 0 → 532 (8.3%), about 38 presentations per neuron, slower than the short run suggested
+  - mean OSI 0.64 → 0.997
+  - decoding 0.91 → 0.95
+  - responsive fraction 0.12 → 0.01
+- **Learning works at this size.** Recruiting more of the 6400 neurons is still the open problem.
 
 ## Next steps
 
