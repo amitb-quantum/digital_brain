@@ -4,6 +4,8 @@ backend:
   device: cuda_standalone
 stimulus:
   size: 64
+  max_rate_hz: 96.0      # bars are 2x longer than at 32x32; halving the rate keeps input per
+                         # presentation constant. 192 Hz: 71% of neurons fire before training (2026-10-12)
 network:
   n_exc: 6400
 training:

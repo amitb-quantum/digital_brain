@@ -171,6 +171,17 @@ A "learned" neuron has a best Pearson r above 0.5 against oriented-bar templates
 - **Post-test responsive fraction is a poor scale metric.** It uses 24 distinct test stimuli, and winner-take-all lets only a few neurons win each one.
 - **Decoding accuracy is just as unreliable here.** It uses 24 evaluation trials, and random weights already decode at 0.75 to 0.79 at this size. Fix the evaluation before tuning against it.
 
+### Large model input drive (2026-10-12, 5090, 500 training presentations)
+
+| `max_rate_hz` | Pre-test responsive | Spikes per presentation | Learned RFs | Accuracy | RTF |
+|---|---|---|---|---|---|
+| 192 (old) | 0.71 | 2283 | n/a | n/a | 0.47 |
+| **96 (now in `vast_h200.yaml`)** | 0.15 | 221 | 30 | 0.82 → 0.99 | 0.67 |
+| 128 | 0.30 | 370 | 37 | 0.79 → 0.92 | 0.66 |
+
+- **Why 96:** bars are twice as long at 64×64, so halving the rate keeps input per presentation about the same as the working medium model.
+- **Recruitment** is about one neuron per 15–20 presentations, so 20k presentations should recruit about 1000 of the 6400.
+
 ## Next steps
 
 1. **Retune for scale.** Make the learning work at 32×32 with 1600 neurons before running anything bigger.
