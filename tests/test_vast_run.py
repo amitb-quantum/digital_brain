@@ -54,3 +54,10 @@ def test_pick_offer_matches_machine_within_rate():
     cheap = OFFER | {"id": 4, "machine_id": 44, "dph_total": 1.5}
     assert vast_run.pick_offer([cheap, reissued], None, 2.10)["id"] == 4  # any machine
     assert vast_run.pick_offer([cheap, reissued], None, 1.0) is None
+
+
+@pytest.mark.parametrize("geo, ok", [("Washington, US", True), (", US", True), ("US", True),
+                                     ("Germany, DE", False), ("", False), (None, False)])
+def test_country_filter(geo, ok):
+    assert vast_run.in_country(OFFER | {"geolocation": geo}, "US") is ok
+    assert vast_run.in_country(OFFER | {"geolocation": geo}, None)

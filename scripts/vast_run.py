@@ -73,6 +73,14 @@ def pick_offer(offers, machine_id, max_hourly):
                 None)
 
 
+def in_country(offer, country):
+    """vast.ai geolocation is "City, CC" (city sometimes blank). None = anywhere.
+    Setup downloads (Miniforge, CUDA, pip) are slow on distant hosts."""
+    if country is None:
+        return True
+    return (offer.get("geolocation") or "").split(",")[-1].strip().upper() == country.upper()
+
+
 def owned(instances, label, instance_id=None):
     """Instances belonging to this campaign: label must match, and id too when known."""
     return [i for i in instances
@@ -95,11 +103,11 @@ def api():
     return _client
 
 
-def search_offers(gpu):
+def search_offers(gpu, country=None):
     query = (f"gpu_name={gpu} num_gpus=1 verified=true rentable=true rented=false "
              f"reliability>0.99")
-    return sorted((o for o in api().search_offers(query=query, order="dph_total") if eligible(o)),
-                  key=hourly_cost)
+    return sorted((o for o in api().search_offers(query=query, order="dph_total")
+                   if eligible(o) and in_country(o, country)), key=hourly_cost)
 
 
 def account_credit():
@@ -199,11 +207,12 @@ def scp(state, src, dst, timeout=1800):
 # ---------------------------------------------------------------- commands
 
 def cmd_quote(args):
-    offers = search_offers(args.gpu)
+    offers = search_offers(args.gpu, args.country)
     credit = account_credit()
     busy = [i for i in list_instances()]
     print(f"account credit ${credit:.2f}; instances on account: {len(busy)}")
-    print(f"{len(offers)} eligible {args.gpu} offers (disk {DISK_GB} GB included):")
+    where = f" in {args.country}" if args.country else ""
+    print(f"{len(offers)} eligible {args.gpu} offers{where} (disk {DISK_GB} GB included):")
     for o in offers[:args.top]:
         h = hourly_cost(o)
         print(f"  machine {o['machine_id']} (offer {o['id']}): ${h:.3f}/h  -> lifetime cap {max_lifetime_s(args.max_cost, h) / 3600:.2f} h "
@@ -223,7 +232,7 @@ def check_preconditions(args):
     if others:
         sys.exit(f"refusing to launch: {len(others)} instance(s) already on the account "
                  "(shared account; one campaign at a time)")
-    offer = pick_offer(search_offers(args.gpu), args.machine_id, args.max_hourly)
+    offer = pick_offer(search_offers(args.gpu, args.country), args.machine_id, args.max_hourly)
     if offer is None:
         sys.exit(f"machine {args.machine_id or 'any'} has no eligible offer at or below "
                  f"${args.max_hourly:.3f}/h; re-run quote")
@@ -304,7 +313,7 @@ def run_campaign(campaign, state, args):
                 state["instance_id"] = found[0]["id"]
                 break
             log(campaign, f"create attempt {attempt + 1} failed: {exc}")
-            offer = pick_offer(search_offers(args.gpu), args.machine_id,
+            offer = pick_offer(search_offers(args.gpu, args.country), args.machine_id,
                                state["max_hourly_usd"])
             if offer is None:
                 raise RuntimeError("approved machine no longer offered within the approved rate")
@@ -424,6 +433,7 @@ def main():
     q.add_argument("--gpu", default="H100_SXM")
     q.add_argument("--max-cost", type=float, default=3.0)
     q.add_argument("--top", type=int, default=5)
+    q.add_argument("--country", default=None, help="two-letter code, e.g. US")
     la = sub.add_parser("launch", help="rent, run one config, collect, destroy")
     la.add_argument("--machine-id", type=int, default=None,
                     help="from `quote`; omit to take the cheapest eligible offer within --max-hourly")
@@ -434,6 +444,7 @@ def main():
     la.add_argument("--device", default=None)
     la.add_argument("--max-cost", type=float, required=True, help="hard USD cap for this rental")
     la.add_argument("--max-hours", type=float, default=6.0)
+    la.add_argument("--country", default=None, help="two-letter code, e.g. US")
     la.add_argument("--yes", action="store_true", help="actually rent (owner-approved quote)")
     c = sub.add_parser("cleanup", help="destroy a campaign's instance and verify")
     c.add_argument("--campaign", required=True)
