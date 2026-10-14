@@ -37,6 +37,7 @@ The largest model has 12,800 neurons and 67 million synapses. That is roughly th
 - [Lessons learned](#lessons-learned)
 - [Limitations and next steps](#limitations-and-next-steps)
 - [References](#references)
+- [License](#license)
 
 ---
 
@@ -237,3 +238,9 @@ More detail is in [docs/results.md](docs/results.md#lessons-we-would-pass-on).
 - Pfister, J.-P. & Gerstner, W. (2006). Triplets of spikes in a model of spike timing-dependent plasticity. *Journal of Neuroscience* 26(38).
 - Stimberg, M., Brette, R. & Goodman, D. F. M. (2019). Brian 2, an intuitive and efficient neural simulator. *eLife* 8:e47314.
 - Alevi, D., Stimberg, M., Sprekeler, H., Obermayer, K. & Augustin, M. (2022). Brian2CUDA: flexible and efficient simulation of spiking neural network models on GPUs. *Frontiers in Neuroinformatics* 16:883700.
+
+## License
+
+Copyright 2026 Quantum Clarity LLC. Licensed under the [Apache License, Version 2.0](LICENSE); see also [NOTICE](NOTICE).
+
+The code depends on [Brian2](https://github.com/brian-team/brian2) (CeCILL-2.1) and [brian2cuda](https://github.com/brian-team/brian2cuda) (GPL-3.0-only), which are installed separately and are not distributed with this repository. If you redistribute this project bundled with brian2cuda, the combined work falls under GPL-3.0; Apache-2.0 code may be included in GPL-3.0 works.

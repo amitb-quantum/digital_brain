@@ -253,7 +253,7 @@ python scripts/vast_run.py cleanup --campaign data/vast/LABEL   # manual destroy
 
 ## Rules
 
-- **The repo `github.com/amitb-quantum/digital_brain` is PRIVATE.** Do not change its visibility; the owner will decide when to make it public.
+- **The repo `github.com/amitb-quantum/digital_brain` is licensed Apache-2.0** (Copyright 2026 Quantum Clarity LLC; see `LICENSE` and `NOTICE`). The owner controls its visibility; never change it.
 - **Never commit `digitalbrain.pdf`** (it's in `.gitignore`). It's the original source conversation. `docs/background.md` is its sanitised replacement. Keep that doc free of chat transcripts, chat links, usernames, hostnames and account details.
 - **Secrets** (for example `VAST_API_KEY`) go in `.env`, which git ignores, or in `vastai set api-key`. Never put them in code or config.
 - **vast.ai budget: USD 15 ceiling for this project, up to USD 20 if really needed** (raised from USD 10 on 2026-10-13). About USD 11.60 spent so far (2026-10-14).

@@ -1,0 +1,8 @@
+digital_brain
+Copyright 2026 Quantum Clarity LLC
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This project depends on, but does not include, the following software:
+  - Brian2 (CeCILL-2.1)           https://github.com/brian-team/brian2
+  - brian2cuda (GPL-3.0-only)     https://github.com/brian-team/brian2cuda
