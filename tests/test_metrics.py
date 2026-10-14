@@ -1,6 +1,7 @@
 import numpy as np
 
-from src.metrics import decoding_accuracy, orientation_selectivity, spike_counts
+from src.metrics import decoding_accuracy, orientation_selectivity, rf_bar_scores, spike_counts
+from src.stimulus import bar_image
 from src.stimulus import Block
 
 
@@ -45,3 +46,11 @@ def test_decoding_counts_silent_presentations_as_wrong():
     repeat_idx = np.array([0, 0, 1, 1])
     counts = np.array([[3, 0], [0, 3], [0, 0], [0, 3]], dtype=float)
     assert decoding_accuracy(counts, theta_idx, repeat_idx, n_or) == 0.5
+
+
+def test_rf_score_finds_bars_and_ignores_noise():
+    size, rng = 16, np.random.default_rng(0)
+    bar = bar_image(size, np.pi / 3, 1.0, 1.0).ravel()
+    w = np.stack([bar + 0.05 * rng.random(size * size), rng.random(size * size)], axis=1)
+    r = rf_bar_scores(w, size, width=1.0, offset_range_px=3.0)
+    assert r[0] > 0.9 and r[1] < 0.3

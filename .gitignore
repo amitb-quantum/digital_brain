@@ -10,6 +10,8 @@ __pycache__/
 
 # Simulation outputs and generated standalone builds
 data/runs/
+# vast.ai campaigns: per-rental private SSH keys, logs, results
+data/vast/
 output/
 *.npz
 

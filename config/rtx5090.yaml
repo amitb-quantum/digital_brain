@@ -8,4 +8,4 @@ stimulus:
 network:
   n_exc: 1600
 training:
-  n_presentations: 5000
+  n_presentations: 20000   # 5000 recruited only 13% of neurons; 20000 gives 37% (2026-10-11)

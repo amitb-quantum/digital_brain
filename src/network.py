@@ -73,6 +73,15 @@ def configure_device(backend, build_dir):
     elif device == "cuda_standalone":
         import brian2cuda  # noqa: F401  registers the device
         b2.set_device("cuda_standalone", directory=str(build_dir), build_on_run=True)
+        # brian2cuda hard-codes nvcc -std=c++11, which cannot parse gcc >= 14's
+        # libstdc++ headers. nvcc keeps the last -std flag, so append c++17.
+        cuda_prefs = b2.prefs.devices.cuda_standalone.cuda_backend
+        if "-std=c++17" not in cuda_prefs.extra_compile_args_nvcc:
+            cuda_prefs.extra_compile_args_nvcc = [*cuda_prefs.extra_compile_args_nvcc, "-std=c++17"]
+        b2.prefs.codegen.cpp.extra_compile_args_gcc = [
+            "-std=c++17" if a == "-std=c++11" else a
+            for a in b2.prefs.codegen.cpp.extra_compile_args_gcc
+        ]
     else:
         raise ValueError(f"unknown backend.device {device!r}")
     b2.defaultclock.dt = backend["dt_ms"] * ms
@@ -110,7 +119,7 @@ def run_simulation(cfg, schedule, w_init, build_dir):
     exc = b2.NeuronGroup(
         n_exc, EXC_EQS, threshold="v > v_thresh + theta",
         reset="v = v_reset; theta += plastic(t) * theta_plus",
-        refractory=exc_p["refractory_ms"] * ms, method="euler",
+        refractory=exc_p["refractory_ms"] * ms, method=net_cfg["method"],
         namespace=exc_ns, name="exc",
     )
     exc.v = exc_p["v_rest_mV"] * mV
@@ -118,7 +127,7 @@ def run_simulation(cfg, schedule, w_init, build_dir):
     inh_p = net_cfg["inh"]
     inh = b2.NeuronGroup(
         n_exc, INH_EQS, threshold="v > v_thresh", reset="v = v_reset",
-        refractory=inh_p["refractory_ms"] * ms, method="euler",
+        refractory=inh_p["refractory_ms"] * ms, method=net_cfg["method"],
         namespace=_neuron_namespace(inh_p), name="inh",
     )
     inh.v = inh_p["v_rest_mV"] * mV
@@ -172,9 +181,11 @@ def run_simulation(cfg, schedule, w_init, build_dir):
     w_final = np.zeros((n_in, n_exc))
     w_final[np.asarray(in_exc.i[:]), np.asarray(in_exc.j[:])] = np.asarray(in_exc.w[:])
 
+    # Copy, don't view: since Brian2 2.10, monitor arrays are views into memory
+    # that is freed with the network, so np.asarray here returned garbage.
     return {
-        "spike_i": np.asarray(exc_mon.i[:]),
-        "spike_t_ms": np.asarray(exc_mon.t[:] / ms),
+        "spike_i": np.array(exc_mon.i[:]),
+        "spike_t_ms": np.array(exc_mon.t[:] / ms),
         "n_input_spikes": int(inp_mon.num_spikes),
         "n_exc_spikes": int(exc_mon.num_spikes),
         "n_inh_spikes": int(inh_mon.num_spikes),

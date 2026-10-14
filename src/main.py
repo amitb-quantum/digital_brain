@@ -13,7 +13,7 @@ import yaml
 
 from . import plots
 from .config import load_config
-from .metrics import evaluate_block, throughput
+from .metrics import evaluate_block, learned_rfs, throughput
 from .network import initial_weights, run_simulation
 from .stimulus import build_schedule
 
@@ -50,6 +50,8 @@ def run_experiment(cfg, out_root=None, make_plots=True, keep_build=False):
         "n_synapses": int(w_init.size + n_exc + n_exc * (n_exc - 1)),
         "pre_test": evals["pre_test"]["summary"],
         "post_test": evals["post_test"]["summary"],
+        "learned_rfs": {"initial": learned_rfs(w_init, cfg),
+                        "final": learned_rfs(results["w_final"], cfg)},
         "performance": throughput(results, n_exc),
         "theta_mean_mV": float(results["theta_final_mV"].mean()),
     }
@@ -73,10 +75,23 @@ def main():
     parser.add_argument("--config", default="config/laptop.yaml")
     parser.add_argument("--out", default=None, help="output root (default: config output_dir)")
     parser.add_argument("--keep-build", action="store_true", help="keep generated standalone code")
+    parser.add_argument("--device", default=None,
+                        help="override backend.device, e.g. run a GPU-sized config on the CPU")
+    parser.add_argument("--n-presentations", type=int, default=None,
+                        help="override training.n_presentations, e.g. for a short speed calibration")
+    parser.add_argument("--no-plots", action="store_true")
     args = parser.parse_args()
 
-    run_dir, metrics = run_experiment(load_config(args.config), args.out, keep_build=args.keep_build)
-    print(json.dumps({k: metrics[k] for k in ("pre_test", "post_test", "performance")}, indent=2))
+    cfg = load_config(args.config)
+    if args.device:
+        cfg["backend"]["device"] = args.device
+        cfg["name"] = f"{cfg['name']}-{args.device}"
+    if args.n_presentations is not None:
+        cfg["training"]["n_presentations"] = args.n_presentations
+        cfg["name"] = f"{cfg['name']}-n{args.n_presentations}"
+    run_dir, metrics = run_experiment(cfg, args.out, make_plots=not args.no_plots,
+                                      keep_build=args.keep_build)
+    print(json.dumps({k: metrics[k] for k in ("pre_test", "post_test", "learned_rfs", "performance")}, indent=2))
     print(f"\nResults in {run_dir}")
 
 
