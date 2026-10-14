@@ -168,6 +168,11 @@ About 50 of the 100 excitatory neurons learn clean oriented-bar receptive fields
   1. A US H100 SXM never came up: about $0.57.
   2. A calibration-only abort on this NVL under an $8 cap: about $0.30.
 
+### Large model on an H100 SXM: calibration only (2026-10-14, Germany, $2.08/h, about $0.21)
+
+- **Result:** the SXM, power-capped at 500 W, calibrated at RTF 1.08 on `vast_h200.yaml`, against 1.13 for the NVL. The ×1.1 forecast (121 min) exceeded the 107 min left under the $5 cap, so the launcher aborted.
+- **Conclusion:** at 67M synapses the H100 variant does not matter, and the NVL's RTF 1.38 stands as the H100 result. The bottleneck is not raw FLOPs or power; most likely it is memory access or brian2cuda's per-step kernel overhead.
+
 ### Failed large run on an H100 NVL (2026-10-13, Virginia, $3.04/h, about $4.15 lost)
 
 - **What happened:** `vast_h200.yaml` had not finished after 73 min of simulation (RTF below 1.6). The controller reached its cutoff, collected only build files and destroyed the instance. Brian2 standalone writes results only at the end, so a cut-off run returns nothing.
@@ -251,7 +256,7 @@ python scripts/vast_run.py cleanup --campaign data/vast/LABEL   # manual destroy
 - **The repo `github.com/amitb-quantum/digital_brain` is PRIVATE.** Do not change its visibility; the owner will decide when to make it public.
 - **Never commit `digitalbrain.pdf`** (it's in `.gitignore`). It's the original source conversation. `docs/background.md` is its sanitised replacement. Keep that doc free of chat transcripts, chat links, usernames, hostnames and account details.
 - **Secrets** (for example `VAST_API_KEY`) go in `.env`, which git ignores, or in `vastai set api-key`. Never put them in code or config.
-- **vast.ai budget: USD 15 ceiling for this project, up to USD 20 if really needed** (raised from USD 10 on 2026-10-13). About USD 11.40 spent so far (2026-10-13).
+- **vast.ai budget: USD 15 ceiling for this project, up to USD 20 if really needed** (raised from USD 10 on 2026-10-13). About USD 11.60 spent so far (2026-10-14).
   - Every rental needs the owner's approval of a fresh quote.
   - The account is shared with another project. Before renting, check the live balance and that no other instance is running. Never spend another project's allowance.
 - **vast.ai instances must be destroyed when a run finishes.** An idle H200 costs about $50 a day. Any launch script must tear the instance down.

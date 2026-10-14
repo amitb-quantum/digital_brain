@@ -36,7 +36,7 @@ We ran a biophysical spiking model of primary visual cortex (V1) on three classe
 |---|---|---|---|
 | Small (36k synapses) | **RTF 16.4** | RTF 1.19 | RTF 4.83 (H100 PCIe) † |
 | Medium (4.2M synapses) | RTF 0.48 | RTF 1.15 | **RTF 4.13** (H100 SXM) |
-| Large (67M synapses) | not run (about 17 h estimated) | RTF 0.73 | **RTF 1.38** (H100 NVL); SXM: *pending* |
+| Large (67M synapses) | not run (about 17 h estimated) | RTF 0.73 | **RTF 1.38** (H100 NVL) ‡ |
 
 Throughput in synaptic events per wall-clock second:
 
@@ -44,6 +44,8 @@ Throughput in synaptic events per wall-clock second:
 |---|---|---|---|
 | Medium | 8.4×10⁶ | 2.0×10⁷ | 7.3×10⁷ |
 | Large | – | 5.2×10⁷ | 9.9×10⁷ |
+
+‡ An H100 SXM (power-capped at 500 W) calibrated at RTF 1.08 on the large model, against 1.13 for the NVL, so it was not run in full. At this size the H100 variant makes no measurable difference.
 
 † Measured with an earlier, shorter test schedule (559 s of biological time). At this size every GPU is latency-bound, so the per-step cost and the RTF are essentially unchanged. The RTX 5090 gave RTF 1.24 on the old schedule and 1.19 on the current one.
 
@@ -106,7 +108,7 @@ Throughput in synaptic events per wall-clock second:
 | Medium model | H100 SXM | 36 min | 1.16 |
 | Large model | H100 NVL | 95 min | 4.80 |
 | Overheads: a crashed launcher, a cut-off run, a dead host, a calibration abort | – | – | about 5.25 |
-| Large model | H100 SXM | *pending* | *pending* |
+| Large model, calibration only (variant comparison) | H100 SXM | 6 min | 0.21 |
 
 ## Reproduce
 
